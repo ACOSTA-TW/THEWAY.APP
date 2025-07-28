@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
@@ -14,23 +14,32 @@
     <!-- Carregamento do Babel para transpilar JSX no navegador -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs: Importação das funções necessárias e exposição ao escopo global -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variáveis globais para acesso no React
-        window.firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        window.initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Sua configuração Firebase (fornecida pelo utilizador)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU",
+            authDomain: "theway-app-ca8e6.firebaseapp.com",
+            projectId: "theway-app-ca8e6",
+            storageBucket: "theway-app-ca8e6.firebasestorage.app",
+            messagingSenderId: "624037320749",
+            appId: "1:624037320749:web:57dbc62528abb0177280a4",
+            measurementId: "G-72EGLY3Q4X"
+        };
 
-        // Inicializar Firebase e exportar para o escopo global
-        window.firebaseApp = initializeApp(window.firebaseConfig);
-        window.db = getFirestore(window.firebaseApp);
-        window.auth = getAuth(window.firebaseApp);
+        // Expor a configuração e as funções do Firebase para o objeto 'window'
+        // Isso permite que o código React (que é transpilado por Babel) acesse essas funções.
+        window.firebaseConfig = firebaseConfig;
+        window.firebaseAppId = firebaseConfig.projectId; // Define o ID do projeto para uso nos caminhos do Firestore
 
-        // Exportar funções do Firestore para o escopo global para uso no React
+        window.initializeApp = initializeApp;
+        window.getAuth = getAuth;
+        window.signInAnonymously = signInAnonymously;
+        window.getFirestore = getFirestore;
         window.collection = collection;
         window.doc = doc;
         window.addDoc = addDoc;
@@ -39,23 +48,8 @@
         window.onSnapshot = onSnapshot;
         window.getDocs = getDocs;
 
-        // Função para autenticar e obter o userId
-        window.getFirebaseUserId = async () => {
-            if (window.initialAuthToken) {
-                try {
-                    const userCredential = await signInWithCustomToken(window.auth, window.initialAuthToken);
-                    return userCredential.user.uid;
-                } catch (error) {
-                    console.error("Erro ao autenticar com token personalizado:", error);
-                    // Fallback para login anónimo se o token falhar
-                    const userCredential = await signInAnonymously(window.auth);
-                    return userCredential.user.uid;
-                }
-            } else {
-                const userCredential = await signInAnonymously(window.auth);
-                return userCredential.user.uid;
-            }
-        };
+        // A inicialização da aplicação Firebase será feita dentro do componente React
+        // para garantir que o DOM e o ambiente React estão completamente prontos.
     </script>
 
     <style>
@@ -263,117 +257,90 @@
             useEffect(() => {
                 const setupFirebase = async () => {
                     console.log("Iniciando setup do Firebase..."); // Depuração
-                    // Espera que as variáveis globais do Firebase estejam disponíveis
-                    await new Promise(resolve => {
-                        const checkFirebase = setInterval(() => {
-                            if (window.db && window.auth && window.appId && window.collection && window.getDocs) {
-                                clearInterval(checkFirebase);
-                                console.log("Variáveis Firebase disponíveis."); // Depuração
-                                resolve();
+
+                    try {
+                        // Inicializa a aplicação Firebase usando a configuração exposta globalmente
+                        window.firebaseApp = window.initializeApp(window.firebaseConfig);
+                        window.db = window.getFirestore(window.firebaseApp);
+                        window.auth = window.getAuth(window.firebaseApp);
+                        console.log("Firebase inicializado com sucesso no useEffect.");
+
+                        // Autentica o utilizador anonimamente
+                        const userCredential = await window.signInAnonymously(window.auth);
+                        const currentUserId = userCredential.user.uid;
+                        setUserId(currentUserId);
+                        setIsAuthReady(true);
+                        console.log("Autenticação Firebase concluída. User ID:", currentUserId); // Depuração
+
+                        // Adiciona dados iniciais se as coleções estiverem vazias (apenas na primeira execução)
+                        const checkAndSeedData = async (collectionName, data) => {
+                            const colRef = window.collection(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
+                            const snapshot = await window.getDocs(colRef);
+                            if (snapshot.empty) {
+                                console.log(`Coleção ${collectionName} vazia. A semear dados iniciais...`);
+                                for (const item of data) {
+                                    await window.addDoc(colRef, item);
+                                }
+                                console.log(`Dados iniciais semeados para ${collectionName}.`);
+                            } else {
+                                console.log(`Coleção ${collectionName} já contém dados. Não foi necessário semear.`);
                             }
-                        }, 100);
-                    });
+                        };
 
-                    // Autentica o utilizador e define o userId
-                    const currentUserId = await window.getFirebaseUserId();
-                    setUserId(currentUserId);
-                    setIsAuthReady(true);
-                    console.log("Autenticação Firebase concluída. User ID:", currentUserId); // Depuração
+                        // Semear dados iniciais apenas se as coleções estiverem vazias
+                        await checkAndSeedData('clientes', initialMockData.clientes);
+                        await checkAndSeedData('contratos', initialMockData.contratos);
+                        await checkAndSeedData('detalhes_credito', initialMockData.detalhes_credito);
+                        await checkAndSeedData('detalhes_seguro', initialMockData.detalhes_seguro);
+                        await checkAndSeedData('detalhes_legalizacao_consultoria', initialMockData.detalhes_legalizacao_consultoria);
+                        await checkAndSeedData('utilizadores', initialMockData.utilizadores);
+                        await checkAndSeedData('fornecedores', initialMockData.fornecedores);
+                        await checkAndSeedData('financeiras', initialMockData.financeiras);
+                        await checkAndSeedData('companhias_seguros', initialMockData.companhias_seguros);
+                        await checkAndSeedData('tarefas', initialMockData.tarefas);
+                        await checkAndSeedData('interacoes', initialMockData.interacoes);
 
-                    // Adiciona dados iniciais se as coleções estiverem vazias (apenas na primeira execução)
-                    const checkAndSeedData = async (collectionName, data) => {
-                        const colRef = window.collection(window.db, `artifacts/${window.appId}/public/data/${collectionName}`);
-                        const snapshot = await window.getDocs(colRef);
-                        if (snapshot.empty) {
-                            console.log(`Coleção ${collectionName} vazia. A semear dados iniciais...`);
-                            for (const item of data) {
-                                await window.addDoc(colRef, item);
-                            }
-                            console.log(`Dados iniciais semeados para ${collectionName}.`);
-                        } else {
-                            console.log(`Coleção ${collectionName} já contém dados. Não foi necessário semear.`);
-                        }
-                    };
-
-                    // Semear dados iniciais apenas se as coleções estiverem vazias
-                    await checkAndSeedData('clientes', initialMockData.clientes);
-                    await checkAndSeedData('contratos', initialMockData.contratos);
-                    await checkAndSeedData('detalhes_credito', initialMockData.detalhes_credito);
-                    await checkAndSeedData('detalhes_seguro', initialMockData.detalhes_seguro);
-                    await checkAndSeedData('detalhes_legalizacao_consultoria', initialMockData.detalhes_legalizacao_consultoria);
-                    await checkAndSeedData('utilizadores', initialMockData.utilizadores);
-                    await checkAndSeedData('fornecedores', initialMockData.fornecedores);
-                    await checkAndSeedData('financeiras', initialMockData.financeiras);
-                    await checkAndSeedData('companhias_seguros', initialMockData.companhias_seguros);
-                    await checkAndSeedData('tarefas', initialMockData.tarefas); // Semear tarefas
-                    await checkAndSeedData('interacoes', initialMockData.interacoes); // Semear interações
+                    } catch (error) {
+                        console.error("Erro durante a inicialização/autenticação Firebase ou semeadura de dados:", error);
+                        showAppModal(
+                            'Erro de Inicialização/Autenticação',
+                            `Ocorreu um erro ao iniciar o Firebase ou autenticar: ${error.message}. Verifique a sua ligação à internet e as regras de segurança do seu Firestore.`
+                        );
+                        setIsAuthReady(true); // Permite que a UI carregue mesmo com erro
+                    }
                 };
 
                 setupFirebase();
-            }, []);
+            }, []); // O array de dependências vazio garante que este efeito corre apenas uma vez, no montagem do componente.
 
             // Listeners para dados em tempo real do Firestore
             useEffect(() => {
-                if (!isAuthReady) return;
+                if (!isAuthReady || !window.db) return; // Garante que o Firebase está pronto e 'db' está disponível
                 console.log("Configurando listeners do Firestore..."); // Depuração
 
-                const unsubscribeClients = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/clientes`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setClientes(data);
-                }, error => console.error("Erro ao obter clientes:", error));
+                // Função auxiliar para criar e retornar o unsubscribe de um listener
+                const setupListener = (collectionName, setStateFunction) => {
+                    const colRef = window.collection(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
+                    return window.onSnapshot(colRef, snapshot => {
+                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setStateFunction(data);
+                    }, error => console.error(`Erro ao obter ${collectionName}:`, error));
+                };
 
-                const unsubscribeContratos = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/contratos`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setContratos(data);
-                }, error => console.error("Erro ao obter contratos:", error));
-
-                const unsubscribeDetalhesCredito = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/detalhes_credito`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setDetalhesCredito(data);
-                }, error => console.error("Erro ao obter detalhes_credito:", error));
-
-                const unsubscribeDetalhesSeguro = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/detalhes_seguro`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setDetalhesSeguro(data);
-                }, error => console.error("Erro ao obter detalhes_seguro:", error));
-
-                const unsubscribeDetalhesLegalizacaoConsultoria = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/detalhes_legalizacao_consultoria`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setDetalhesLegalizacaoConsultoria(data);
-                }, error => console.error("Erro ao obter detalhes_legalizacao_consultoria:", error));
-
-                const unsubscribeUtilizadores = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/utilizadores`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setUtilizadores(data);
-                }, error => console.error("Erro ao obter utilizadores:", error));
-
-                const unsubscribeFornecedores = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/fornecedores`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setFornecedores(data);
-                }, error => console.error("Erro ao obter fornecedores:", error));
-
-                const unsubscribeFinanceiras = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/financeiras`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setFinanceiras(data);
-                }, error => console.error("Erro ao obter financeiras:", error));
-
-                const unsubscribeCompanhiasSeguros = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/companhias_seguros`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setCompanhiasSeguros(data);
-                }, error => console.error("Erro ao obter companhias_seguros:", error));
-
-                const unsubscribeTarefas = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/tarefas`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setTarefas(data);
-                }, error => console.error("Erro ao obter tarefas:", error));
-
-                const unsubscribeInteracoes = window.onSnapshot(window.collection(window.db, `artifacts/${window.appId}/public/data/interacoes`), snapshot => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setInteracoes(data);
-                }, error => console.error("Erro ao obter interações:", error));
+                const unsubscribeClients = setupListener('clientes', setClientes);
+                const unsubscribeContratos = setupListener('contratos', setContratos);
+                const unsubscribeDetalhesCredito = setupListener('detalhes_credito', setDetalhesCredito);
+                const unsubscribeDetalhesSeguro = setupListener('detalhes_seguro', setDetalhesSeguro);
+                const unsubscribeDetalhesLegalizacaoConsultoria = setupListener('detalhes_legalizacao_consultoria', setDetalhesLegalizacaoConsultoria);
+                const unsubscribeUtilizadores = setupListener('utilizadores', setUtilizadores);
+                const unsubscribeFornecedores = setupListener('fornecedores', setFornecedores);
+                const unsubscribeFinanceiras = setupListener('financeiras', setFinanceiras);
+                const unsubscribeCompanhiasSeguros = setupListener('companhias_seguros', setCompanhiasSeguros);
+                const unsubscribeTarefas = setupListener('tarefas', setTarefas);
+                const unsubscribeInteracoes = setupListener('interacoes', setInteracoes);
 
 
-                // Cleanup function
+                // Cleanup function: desinscreve todos os listeners quando o componente é desmontado
                 return () => {
                     console.log("Desinscrevendo listeners do Firestore."); // Depuração
                     unsubscribeClients();
@@ -437,7 +404,7 @@
             // Funções CRUD do Firestore
             const addFirestoreDoc = async (collectionName, data) => {
                 try {
-                    const docRef = await window.addDoc(window.collection(window.db, `artifacts/${window.appId}/public/data/${collectionName}`), data);
+                    const docRef = await window.addDoc(window.collection(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`), data);
                     showAppModal('Sucesso', `${collectionName.slice(0, -1).charAt(0).toUpperCase() + collectionName.slice(0, -1).slice(1)} adicionado com sucesso!`);
                     return docRef.id;
                 } catch (e) {
@@ -448,7 +415,7 @@
 
             const updateFirestoreDoc = async (collectionName, docId, data) => {
                 try {
-                    await window.updateDoc(window.doc(window.db, `artifacts/${window.appId}/public/data/${collectionName}/${docId}`), data);
+                    await window.updateDoc(window.doc(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}/${docId}`), data);
                     showAppModal('Sucesso', `${collectionName.slice(0, -1).charAt(0).toUpperCase() + collectionName.slice(0, -1).slice(1)} atualizado com sucesso!`);
                 } catch (e) {
                     console.error("Erro ao atualizar documento: ", e);
@@ -458,7 +425,7 @@
 
             const deleteFirestoreDoc = async (collectionName, docId) => {
                 try {
-                    await window.deleteDoc(window.doc(window.db, `artifacts/${window.appId}/public/data/${collectionName}/${docId}`));
+                    await window.deleteDoc(window.doc(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}/${docId}`));
                     showAppModal('Sucesso', `${collectionName.slice(0, -1).charAt(0).toUpperCase() + collectionName.slice(0, -1).slice(1)} eliminado com sucesso!`);
                 } catch (e) {
                     console.error("Erro ao eliminar documento: ", e);
@@ -865,10 +832,10 @@
                     valor = detalhe ? detalhe.comissao_financeira + detalhe.comissao_fornecedor : 0;
                 } else if (c.tipo_servico === 'Seguro') {
                     const detalhe = detalhesSeguro.find(ds => ds.id_contrato === c.id_contrato);
-                    valor = detalhe ? detalhe.valor_premio : 0;
+                    valor = detalhe ? ds.valor_premio : 0;
                 } else if (c.tipo_servico === 'Legalização' || c.tipo_servico === 'Consultoria') {
                     const detalhe = detalhesLegalizacaoConsultoria.find(dlc => dlc.id_contrato === c.id_contrato);
-                    valor = detalhe ? detalhe.honorarios : 0;
+                    valor = detalhe ? dlc.honorarios : 0;
                 }
                 return sum + valor;
             }, 0);
