@@ -17,28 +17,39 @@
     <!-- Firebase SDKs: Importação das funções necessárias e exposição ao escopo global -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Sua configuração Firebase (fornecida pelo utilizador)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU",
+        // As variáveis __app_id, __firebase_config e __initial_auth_token
+        // são fornecidas automaticamente pelo ambiente Canvas.
+        // Usamos um fallback para 'default-app-id' e uma configuração vazia
+        // para compatibilidade fora do ambiente Canvas, se necessário.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU", // Fallback para a sua chave API se __firebase_config não estiver disponível
             authDomain: "theway-app-ca8e6.firebaseapp.com",
             projectId: "theway-app-ca8e6",
-            storageBucket: "theway-app-ca8e6.firebasestorage.app",
+            storageBucket: "theway-app-ca8e6.appspot.com",
             messagingSenderId: "624037320749",
             appId: "1:624037320749:web:57dbc62528abb0177280a4",
             measurementId: "G-72EGLY3Q4X"
         };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
 
         // Expor a configuração e as funções do Firebase para o objeto 'window'
         // Isso permite que o código React (que é transpilado por Babel) acesse essas funções.
         window.firebaseConfig = firebaseConfig;
-        window.firebaseAppId = firebaseConfig.projectId; // Define o ID do projeto para uso nos caminhos do Firestore
+        window.firebaseAppId = appId; // Usar o appId fornecido pelo ambiente
+        window.initialAuthToken = initialAuthToken; // Expor o token de autenticação
 
         window.initializeApp = initializeApp;
         window.getAuth = getAuth;
         window.signInAnonymously = signInAnonymously;
+        window.signInWithCustomToken = signInWithCustomToken; // Expor signInWithCustomToken
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword; // Expor createUserWithEmailAndPassword
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword; // Expor signInWithEmailAndPassword
+        window.signOut = signOut; // Expor signOut
         window.getFirestore = getFirestore;
         window.collection = collection;
         window.doc = doc;
@@ -172,6 +183,7 @@
                 { id_contrato: 'CON-004', tipo_processo: 'Legalização de Viatura', estado_processo: 'Em Análise', honorarios: 300, documentos_necessarios: 'Documento Único Automóvel, Fatura de Compra' },
             ],
             utilizadores: [
+                // Estes serão os dados iniciais, mas os roles reais virão do Firestore
                 { id_utilizador: 'USER-001', nome: 'Comercial Ana', email: 'ana@theway.com', role: 'Comercial' },
                 { id_utilizador: 'USER-002', nome: 'Comercial Bruno', email: 'bruno@theway.com', role: 'Comercial' },
                 { id_utilizador: 'USER-003', nome: 'Admin Sofia', email: 'sofia@theway.com', role: 'Admin' },
@@ -231,594 +243,77 @@
             );
         };
 
-        // Componente da Aplicação Principal
-        const App = () => {
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [currentUserRole, setCurrentUserRole] = useState('Admin'); // Simulação de role
-            const [userId, setUserId] = useState(null); // ID do utilizador Firebase
-            const [isAuthReady, setIsAuthReady] = useState(false); // Estado de autenticação
-            const [showModal, setShowModal] = useState(false);
-            const [modalContent, setModalContent] = useState({});
+        // Componente de Autenticação
+        const AuthScreen = ({ onLogin, onRegister, showAppModal }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [isRegistering, setIsRegistering] = useState(false);
 
-            // Estados para os dados do Firestore
-            const [clientes, setClientes] = useState([]);
-            const [contratos, setContratos] = useState([]);
-            const [detalhesCredito, setDetalhesCredito] = useState([]);
-            const [detalhesSeguro, setDetalhesSeguro] = useState([]);
-            const [detalhesLegalizacaoConsultoria, setDetalhesLegalizacaoConsultoria] = useState([]);
-            const [utilizadores, setUtilizadores] = useState([]);
-            const [fornecedores, setFornecedores] = useState([]);
-            const [financeiras, setFinanceiras] = useState([]);
-            const [companhiasSeguros, setCompanhiasSeguros] = useState([]);
-            const [tarefas, setTarefas] = useState([]); // Novo estado para tarefas
-            const [interacoes, setInteracoes] = useState([]); // Novo estado para interações
-
-            // Inicialização do Firebase e autenticação
-            useEffect(() => {
-                const setupFirebase = async () => {
-                    console.log("Iniciando setup do Firebase..."); // Depuração
-
-                    try {
-                        // Inicializa a aplicação Firebase usando a configuração exposta globalmente
-                        window.firebaseApp = window.initializeApp(window.firebaseConfig);
-                        window.db = window.getFirestore(window.firebaseApp);
-                        window.auth = window.getAuth(window.firebaseApp);
-                        console.log("Firebase inicializado com sucesso no useEffect.");
-
-                        // Autentica o utilizador anonimamente
-                        const userCredential = await window.signInAnonymously(window.auth);
-                        const currentUserId = userCredential.user.uid;
-                        setUserId(currentUserId);
-                        setIsAuthReady(true);
-                        console.log("Autenticação Firebase concluída. User ID:", currentUserId); // Depuração
-
-                        // Adiciona dados iniciais se as coleções estiverem vazias (apenas na primeira execução)
-                        const checkAndSeedData = async (collectionName, data) => {
-                            const colRef = window.collection(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
-                            const snapshot = await window.getDocs(colRef);
-                            if (snapshot.empty) {
-                                console.log(`Coleção ${collectionName} vazia. A semear dados iniciais...`);
-                                for (const item of data) {
-                                    await window.addDoc(colRef, item);
-                                }
-                                console.log(`Dados iniciais semeados para ${collectionName}.`);
-                            } else {
-                                console.log(`Coleção ${collectionName} já contém dados. Não foi necessário semear.`);
-                            }
-                        };
-
-                        // Semear dados iniciais apenas se as coleções estiverem vazias
-                        await checkAndSeedData('clientes', initialMockData.clientes);
-                        await checkAndSeedData('contratos', initialMockData.contratos);
-                        await checkAndSeedData('detalhes_credito', initialMockData.detalhes_credito);
-                        await checkAndSeedData('detalhes_seguro', initialMockData.detalhes_seguro);
-                        await checkAndSeedData('detalhes_legalizacao_consultoria', initialMockData.detalhes_legalizacao_consultoria);
-                        await checkAndSeedData('utilizadores', initialMockData.utilizadores);
-                        await checkAndSeedData('fornecedores', initialMockData.fornecedores);
-                        await checkAndSeedData('financeiras', initialMockData.financeiras);
-                        await checkAndSeedData('companhias_seguros', initialMockData.companhias_seguros);
-                        await checkAndSeedData('tarefas', initialMockData.tarefas);
-                        await checkAndSeedData('interacoes', initialMockData.interacoes);
-
-                    } catch (error) {
-                        console.error("Erro durante a inicialização/autenticação Firebase ou semeadura de dados:", error);
-                        showAppModal(
-                            'Erro de Inicialização/Autenticação',
-                            `Ocorreu um erro ao iniciar o Firebase ou autenticar: ${error.message}. Verifique a sua ligação à internet e as regras de segurança do seu Firestore.`
-                        );
-                        setIsAuthReady(true); // Permite que a UI carregue mesmo com erro
-                    }
-                };
-
-                setupFirebase();
-            }, []); // O array de dependências vazio garante que este efeito corre apenas uma vez, no montagem do componente.
-
-            // Listeners para dados em tempo real do Firestore
-            useEffect(() => {
-                if (!isAuthReady || !window.db) return; // Garante que o Firebase está pronto e 'db' está disponível
-                console.log("Configurando listeners do Firestore..."); // Depuração
-
-                // Função auxiliar para criar e retornar o unsubscribe de um listener
-                const setupListener = (collectionName, setStateFunction) => {
-                    const colRef = window.collection(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
-                    return window.onSnapshot(colRef, snapshot => {
-                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setStateFunction(data);
-                    }, error => console.error(`Erro ao obter ${collectionName}:`, error));
-                };
-
-                const unsubscribeClients = setupListener('clientes', setClientes);
-                const unsubscribeContratos = setupListener('contratos', setContratos);
-                const unsubscribeDetalhesCredito = setupListener('detalhes_credito', setDetalhesCredito);
-                const unsubscribeDetalhesSeguro = setupListener('detalhes_seguro', setDetalhesSeguro);
-                const unsubscribeDetalhesLegalizacaoConsultoria = setupListener('detalhes_legalizacao_consultoria', setDetalhesLegalizacaoConsultoria);
-                const unsubscribeUtilizadores = setupListener('utilizadores', setUtilizadores);
-                const unsubscribeFornecedores = setupListener('fornecedores', setFornecedores);
-                const unsubscribeFinanceiras = setupListener('financeiras', setFinanceiras);
-                const unsubscribeCompanhiasSeguros = setupListener('companhias_seguros', setCompanhiasSeguros);
-                const unsubscribeTarefas = setupListener('tarefas', setTarefas);
-                const unsubscribeInteracoes = setupListener('interacoes', setInteracoes);
-
-
-                // Cleanup function: desinscreve todos os listeners quando o componente é desmontado
-                return () => {
-                    console.log("Desinscrevendo listeners do Firestore."); // Depuração
-                    unsubscribeClients();
-                    unsubscribeContratos();
-                    unsubscribeDetalhesCredito();
-                    unsubscribeDetalhesSeguro();
-                    unsubscribeDetalhesLegalizacaoConsultoria();
-                    unsubscribeUtilizadores();
-                    unsubscribeFornecedores();
-                    unsubscribeFinanceiras();
-                    unsubscribeCompanhiasSeguros();
-                    unsubscribeTarefas();
-                    unsubscribeInteracoes();
-                };
-            }, [isAuthReady]); // Depende de isAuthReady para garantir que o Firebase está inicializado
-
-            const showAppModal = (title, message, onConfirm = null) => {
-                setModalContent({ title, message, onConfirm });
-                setShowModal(true);
-            };
-
-            const hideAppModal = () => {
-                setShowModal(false);
-                setModalContent({});
-            };
-
-            // Função para obter dados baseados na role do utilizador
-            const getFilteredData = useCallback((data, commercialIdField = null) => {
-                if (currentUserRole === 'Admin') {
-                    return data;
-                }
-                const currentUserId = utilizadores.find(u => u.role === currentUserRole)?.id_utilizador;
-                if (!currentUserId) return [];
-
-                if (currentUserRole === 'Comercial') {
-                    if (commercialIdField) {
-                        return data.filter(item => item[commercialIdField] === currentUserId);
-                    }
-                    // Para clientes, filtramos pelo id_comercial_responsavel
-                    // Para contratos, filtramos pelo id_comercial
-                    if (data === clientes) {
-                        return data.filter(item => item.id_comercial_responsavel === currentUserId);
-                    }
-                    if (data === contratos) {
-                        return data.filter(item => item.id_comercial === currentUserId);
-                    }
-                    if (data === tarefas) { // Filtrar tarefas por responsável
-                        return data.filter(item => item.id_utilizador_responsavel === currentUserId);
-                    }
-                    if (data === interacoes) { // Filtrar interações por utilizador que as registou
-                        return data.filter(item => item.id_utilizador === currentUserId);
-                    }
-                    return []; // Outros dados não são filtrados por comercial
-                }
-                if (currentUserRole === 'Colaborador') {
-                    return data; // Colaborador vê tudo, mas só consulta
-                }
-                return [];
-            }, [currentUserRole, utilizadores, clientes, contratos, tarefas, interacoes]);
-
-            // Funções CRUD do Firestore
-            const addFirestoreDoc = async (collectionName, data) => {
-                try {
-                    const docRef = await window.addDoc(window.collection(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`), data);
-                    showAppModal('Sucesso', `${collectionName.slice(0, -1).charAt(0).toUpperCase() + collectionName.slice(0, -1).slice(1)} adicionado com sucesso!`);
-                    return docRef.id;
-                } catch (e) {
-                    console.error("Erro ao adicionar documento: ", e);
-                    showAppModal('Erro', `Erro ao adicionar ${collectionName.slice(0, -1)}.`);
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (isRegistering) {
+                    await onRegister(email, password);
+                } else {
+                    await onLogin(email, password);
                 }
             };
-
-            const updateFirestoreDoc = async (collectionName, docId, data) => {
-                try {
-                    await window.updateDoc(window.doc(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}/${docId}`), data);
-                    showAppModal('Sucesso', `${collectionName.slice(0, -1).charAt(0).toUpperCase() + collectionName.slice(0, -1).slice(1)} atualizado com sucesso!`);
-                } catch (e) {
-                    console.error("Erro ao atualizar documento: ", e);
-                    showAppModal('Erro', `Erro ao atualizar ${collectionName.slice(0, -1)}.`);
-                }
-            };
-
-            const deleteFirestoreDoc = async (collectionName, docId) => {
-                try {
-                    await window.deleteDoc(window.doc(window.db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}/${docId}`));
-                    showAppModal('Sucesso', `${collectionName.slice(0, -1).charAt(0).toUpperCase() + collectionName.slice(0, -1).slice(1)} eliminado com sucesso!`);
-                } catch (e) {
-                    console.error("Erro ao eliminar documento: ", e);
-                    showAppModal('Erro', `Erro ao eliminar ${collectionName.slice(0, -1)}.`);
-                }
-            };
-
-            // Funções CRUD para Clientes
-            const addClient = async (newClient) => {
-                // Gerar um ID de cliente fictício para o campo id_cliente, mas o Firestore gerará o seu próprio ID de documento
-                const clientCount = clientes.length > 0 ? Math.max(...clientes.map(c => parseInt(c.id_cliente.replace('CLI-', '')))) : 0;
-                const newIdCliente = `CLI-${String(clientCount + 1).padStart(3, '0')}`;
-                await addFirestoreDoc('clientes', { ...newClient, id_cliente: newIdCliente, data_criacao: new Date().toISOString().split('T')[0] });
-            };
-
-            const updateClient = async (updatedClient) => {
-                await updateFirestoreDoc('clientes', updatedClient.id, updatedClient);
-            };
-
-            const deleteClient = async (id) => {
-                const clientContracts = contratos.filter(c => c.id_cliente === clientes.find(cli => cli.id === id)?.id_cliente);
-                const clientTasks = tarefas.filter(t => t.id_cliente === clientes.find(cli => cli.id === id)?.id_cliente);
-                const clientInteracoes = interacoes.filter(i => i.id_cliente === clientes.find(cli => cli.id === id)?.id_cliente);
-
-                if (clientContracts.length > 0 || clientTasks.length > 0 || clientInteracoes.length > 0) {
-                    showAppModal('Erro', 'Não é possível eliminar o cliente, pois existem contratos, tarefas ou interações associadas. Elimine primeiro os itens associados.');
-                    return;
-                }
-                showAppModal('Confirmar Eliminação', 'Tem a certeza que quer eliminar este cliente?', async () => {
-                    await deleteFirestoreDoc('clientes', id);
-                    hideAppModal();
-                });
-            };
-
-            // Funções CRUD para Contratos
-            const addContract = async (newContract) => {
-                const contractCount = contratos.length > 0 ? Math.max(...contratos.map(c => parseInt(c.id_contrato.replace('CON-', '')))) : 0;
-                const newIdContrato = `CON-${String(contractCount + 1).padStart(3, '0')}`;
-                const docId = await addFirestoreDoc('contratos', { ...newContract, id_contrato: newIdContrato, data_criacao: new Date().toISOString().split('T')[0] });
-
-                // Adicionar detalhes específicos do contrato
-                if (docId) {
-                    let detailsCollection;
-                    let detailsData = { id_contrato: newIdContrato };
-                    if (newContract.tipo_servico === 'Crédito') {
-                        detailsCollection = 'detalhes_credito';
-                        detailsData = {
-                            ...detailsData,
-                            id_financeira: newContract.id_financeira,
-                            id_fornecedor: newContract.id_fornecedor,
-                            valor_financiado: newContract.valor_financiado ? parseFloat(newContract.valor_financiado) : 0,
-                            prazo_meses: newContract.prazo_meses ? parseInt(newContract.prazo_meses) : 0,
-                            comissao_financeira: newContract.comissao_financeira ? parseFloat(newContract.comissao_financeira) : 0,
-                            comissao_fornecedor: newContract.comissao_fornecedor ? parseFloat(newContract.comissao_fornecedor) : 0,
-                            documentos_em_falta: newContract.documentos_em_falta,
-                            lista_documentos_em_falta: newContract.lista_documentos_em_falta,
-                            credito_realizado: newContract.credito_realizado,
-                            data_realizacao: newContract.data_realizacao
-                        };
-                    } else if (newContract.tipo_servico === 'Seguro') {
-                        detailsCollection = 'detalhes_seguro';
-                        detailsData = {
-                            ...detailsData,
-                            id_companhia: newContract.id_companhia,
-                            tipo_seguro: newContract.tipo_seguro,
-                            valor_premio: newContract.valor_premio ? parseFloat(newContract.valor_premio) : 0,
-                            freelancer: newContract.freelancer,
-                            mediador: newContract.mediador,
-                            renovacao_automatica: newContract.renovacao_automatica,
-                            data_renovacao: newContract.data_renovacao
-                        };
-                    } else if (newContract.tipo_servico === 'Legalização' || newContract.tipo_servico === 'Consultoria') {
-                        detailsCollection = 'detalhes_legalizacao_consultoria';
-                        detailsData = {
-                            ...detailsData,
-                            tipo_processo: newContract.tipo_processo,
-                            estado_processo: newContract.estado_processo,
-                            honorarios: newContract.honorarios ? parseFloat(newContract.honorarios) : 0,
-                            documentos_necessarios: newContract.documentos_necessarios
-                        };
-                    }
-                    if (detailsCollection) {
-                        await addFirestoreDoc(detailsCollection, detailsData);
-                    }
-                }
-            };
-
-            const updateContract = async (updatedContract) => {
-                await updateFirestoreDoc('contratos', updatedContract.id, updatedContract);
-
-                // Atualizar detalhes específicos do contrato
-                let detailsCollection;
-                let detailsData = {};
-                let existingDetailDocId = null;
-
-                if (updatedContract.tipo_servico === 'Crédito') {
-                    detailsCollection = 'detalhes_credito';
-                    existingDetailDocId = detalhesCredito.find(d => d.id_contrato === updatedContract.id_contrato)?.id;
-                    detailsData = {
-                        id_financeira: updatedContract.id_financeira,
-                        id_fornecedor: updatedContract.id_fornecedor,
-                        valor_financiado: updatedContract.valor_financiado ? parseFloat(updatedContract.valor_financiado) : 0,
-                        prazo_meses: updatedContract.prazo_meses ? parseInt(updatedContract.prazo_meses) : 0,
-                        comissao_financeira: updatedContract.comissao_financeira ? parseFloat(updatedContract.comissao_financeira) : 0,
-                        comissao_fornecedor: updatedContract.comissao_fornecedor ? parseFloat(updatedContract.comissao_fornecedor) : 0,
-                        documentos_em_falta: updatedContract.documentos_em_falta,
-                        lista_documentos_em_falta: updatedContract.lista_documentos_em_falta,
-                        credito_realizado: updatedContract.credito_realizado,
-                        data_realizacao: updatedContract.data_realizacao
-                    };
-                } else if (updatedContract.tipo_servico === 'Seguro') {
-                    detailsCollection = 'detalhes_seguro';
-                    existingDetailDocId = detalhesSeguro.find(d => d.id_contrato === updatedContract.id_contrato)?.id;
-                    detailsData = {
-                        id_companhia: updatedContract.id_companhia,
-                        tipo_seguro: updatedContract.tipo_seguro,
-                        valor_premio: updatedContract.valor_premio ? parseFloat(updatedContract.valor_premio) : 0,
-                        freelancer: updatedContract.freelancer,
-                        mediador: updatedContract.mediador,
-                        renovacao_automatica: updatedContract.renovacao_automatica,
-                        data_renovacao: updatedContract.data_renovacao
-                    };
-                } else if (updatedContract.tipo_servico === 'Legalização' || updatedContract.tipo_servico === 'Consultoria') {
-                    detailsCollection = 'detalhes_legalizacao_consultoria';
-                    existingDetailDocId = detalhesLegalizacaoConsultoria.find(d => d.id_contrato === updatedContract.id_contrato)?.id;
-                    detailsData = {
-                        tipo_processo: updatedContract.tipo_processo,
-                        estado_processo: updatedContract.estado_processo,
-                        honorarios: updatedContract.honorarios ? parseFloat(updatedContract.honorarios) : 0,
-                        documentos_necessarios: updatedContract.documentos_necessarios
-                    };
-                }
-
-                if (detailsCollection && existingDetailDocId) {
-                    await updateFirestoreDoc(detailsCollection, existingDetailDocId, detailsData);
-                } else if (detailsCollection && !existingDetailDocId) {
-                    // Se não existia detalhe e agora existe um tipo de serviço com detalhe, adiciona
-                    await addFirestoreDoc(detailsCollection, { id_contrato: updatedContract.id_contrato, ...detailsData });
-                }
-            };
-
-            const deleteContract = async (id) => {
-                const contractTasks = tarefas.filter(t => t.id_contrato === contratos.find(c => c.id === id)?.id_contrato);
-                const contractInteracoes = interacoes.filter(i => i.id_contrato === contratos.find(c => c.id === id)?.id_contrato);
-
-                if (contractTasks.length > 0 || contractInteracoes.length > 0) {
-                    showAppModal('Erro', 'Não é possível eliminar o contrato, pois existem tarefas ou interações associadas. Elimine primeiro os itens associados.');
-                    return;
-                }
-
-                showAppModal('Confirmar Eliminação', 'Tem a certeza que quer eliminar este contrato?', async () => {
-                    const contractToDelete = contratos.find(c => c.id === id);
-                    if (contractToDelete) {
-                        // Tentar eliminar detalhes associados
-                        const creditDetail = detalhesCredito.find(d => d.id_contrato === contractToDelete.id_contrato);
-                        if (creditDetail) await deleteFirestoreDoc('detalhes_credito', creditDetail.id);
-                        const seguroDetail = detalhesSeguro.find(d => d.id_contrato === contractToDelete.id_contrato);
-                        if (seguroDetail) await deleteFirestoreDoc('detalhes_seguro', seguroDetail.id);
-                        const legalizacaoConsultoriaDetail = detalhesLegalizacaoConsultoria.find(d => d.id_contrato === contractToDelete.id_contrato);
-                        if (legalizacaoConsultoriaDetail) await deleteFirestoreDoc('detalhes_legalizacao_consultoria', legalizacaoConsultoriaDetail.id);
-                    }
-                    await deleteFirestoreDoc('contratos', id);
-                    hideAppModal();
-                });
-            };
-
-            const markPendingAsResolved = async (contractId) => {
-                const contractDoc = contratos.find(c => c.id_contrato === contractId);
-                if (contractDoc) {
-                    await updateFirestoreDoc('contratos', contractDoc.id, { estado: 'Ativo', observacoes: 'Pendência resolvida.' });
-                }
-            };
-
-            // Funções CRUD para Fornecedores, Financeiras, Companhias
-            const addSupplierFinanceiraCompanhia = async (type, data) => {
-                let collectionName;
-                let newIdPrefix;
-                if (type === 'fornecedor') {
-                    collectionName = 'fornecedores';
-                    newIdPrefix = 'FOR';
-                } else if (type === 'financeira') {
-                    collectionName = 'financeiras';
-                    newIdPrefix = 'FIN';
-                } else if (type === 'companhia') {
-                    collectionName = 'companhias_seguros';
-                    newIdPrefix = 'COMP';
-                }
-
-                const currentData = type === 'fornecedor' ? fornecedores : type === 'financeira' ? financeiras : companhiasSeguros;
-                const maxId = currentData.length > 0 ? Math.max(...currentData.map(item => parseInt(item[`id_${type}`].replace(`${newIdPrefix}-`, '')))) : 0;
-                const newGeneratedId = `${newIdPrefix}-${String(maxId + 1).padStart(3, '0')}`;
-
-                await addFirestoreDoc(collectionName, { [`id_${type}`]: newGeneratedId, ...data });
-            };
-
-            const updateSupplierFinanceiraCompanhia = async (type, docId, data) => {
-                let collectionName;
-                if (type === 'fornecedor') collectionName = 'fornecedores';
-                else if (type === 'financeira') collectionName = 'financeiras';
-                else if (type === 'companhia') collectionName = 'companhias_seguros';
-
-                await updateFirestoreDoc(collectionName, docId, data);
-            };
-
-            const deleteSupplierFinanceiraCompanhia = async (type, id) => {
-                let collectionName;
-                if (type === 'fornecedor') collectionName = 'fornecedores';
-                else if (type === 'financeira') collectionName = 'financeiras';
-                else if (type === 'companhia') collectionName = 'companhias_seguros';
-
-                showAppModal('Confirmar Eliminação', `Tem a certeza que quer eliminar este ${type}?`, async () => {
-                    await deleteFirestoreDoc(collectionName, id);
-                    hideAppModal();
-                });
-            };
-
-            // Funções CRUD para Tarefas
-            const addTask = async (newTask) => {
-                const taskCount = tarefas.length > 0 ? Math.max(...tarefas.map(t => parseInt(t.id_tarefa.replace('TASK-', '')))) : 0;
-                const newIdTarefa = `TASK-${String(taskCount + 1).padStart(3, '0')}`;
-                await addFirestoreDoc('tarefas', { ...newTask, id_tarefa: newIdTarefa, data_criacao: new Date().toISOString().split('T')[0] });
-            };
-
-            const updateTask = async (updatedTask) => {
-                await updateFirestoreDoc('tarefas', updatedTask.id, updatedTask);
-            };
-
-            const deleteTask = async (id) => {
-                showAppModal('Confirmar Eliminação', 'Tem a certeza que quer eliminar esta tarefa?', async () => {
-                    await deleteFirestoreDoc('tarefas', id);
-                    hideAppModal();
-                });
-            };
-
-            // Funções CRUD para Interações
-            const addInteraction = async (newInteraction) => {
-                const interactionCount = interacoes.length > 0 ? Math.max(...interacoes.map(i => parseInt(i.id_interacao.replace('INT-', '')))) : 0;
-                const newIdInteracao = `INT-${String(interactionCount + 1).padStart(3, '0')}`;
-                await addFirestoreDoc('interacoes', { ...newInteraction, id_interacao: newIdInteracao, data_interacao: new Date().toISOString().slice(0, 19) }); // YYYY-MM-DDTHH:MM:SS
-            };
-
-            // Não há update/delete direto de interações por agora, apenas adicionar para histórico
-
-            if (!isAuthReady) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-                        <p className="text-xl text-gray-700">A carregar aplicação e a autenticar...</p>
-                    </div>
-                );
-            }
 
             return (
-                <div className="min-h-screen bg-gray-50 text-gray-800">
-                    <header className="bg-accent-beige text-primary-dark p-4 shadow-lg">
-                        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
-                            <div className="mb-2 md:mb-0">
-                                <img src="https://firebasestorage.googleapis.com/v0/b/generative-ai-sandbox.appspot.com/o/2.png?alt=media&token=26ba8771-437b-41a8-ba9e-9f301d1d3922" alt="THE WAY Logo" className="h-12 w-auto" />
+                <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+                    <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+                        <h2 className="text-3xl font-bold text-primary-dark mb-6 text-center">
+                            {isRegistering ? 'Registar' : 'Login'}
+                        </h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-accent-beige"
+                                    placeholder="Seu email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
                             </div>
-                            <nav className="flex space-x-4 md:space-x-6 text-lg">
-                                <button onClick={() => setActiveTab('dashboard')} className={`px-3 py-2 rounded-md transition duration-300 ${activeTab === 'dashboard' ? 'bg-primary-dark text-white' : 'hover:bg-light-grey-custom'}`}>Dashboard</button>
-                                <button onClick={() => setActiveTab('clientes')} className={`px-3 py-2 rounded-md transition duration-300 ${activeTab === 'clientes' ? 'bg-primary-dark text-white' : 'hover:bg-light-grey-custom'}`}>Clientes</button>
-                                <button onClick={() => setActiveTab('contratos')} className={`px-3 py-2 rounded-md transition duration-300 ${activeTab === 'contratos' ? 'bg-primary-dark text-white' : 'hover:bg-light-grey-custom'}`}>Contratos</button>
-                                <button onClick={() => setActiveTab('tarefas')} className={`px-3 py-2 rounded-md transition duration-300 ${activeTab === 'tarefas' ? 'bg-primary-dark text-white' : 'hover:bg-light-grey-custom'}`}>Tarefas</button>
-                                {(currentUserRole === 'Admin') && (
-                                    <>
-                                        <button onClick={() => setActiveTab('fornecedores')} className={`px-3 py-2 rounded-md transition duration-300 ${activeTab === 'fornecedores' ? 'bg-primary-dark text-white' : 'hover:bg-light-grey-custom'}`}>Fornecedores/Financeiras</button>
-                                        <button onClick={() => setActiveTab('relatorios')} className={`px-3 py-2 rounded-md transition duration-300 ${activeTab === 'relatorios' ? 'bg-primary-dark text-white' : 'hover:bg-light-grey-custom'}`}>Relatórios</button>
-                                    </>
-                                )}
-                            </nav>
-                            <div className="mt-2 md:mt-0 flex items-center space-x-4">
-                                <label htmlFor="role-select" className="sr-only">Selecionar Função</label>
-                                <select
-                                    id="role-select"
-                                    value={currentUserRole}
-                                    onChange={(e) => setCurrentUserRole(e.target.value)}
-                                    className="bg-primary-dark text-white rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-light-grey-custom"
+                            <div className="mb-6">
+                                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+                                    Senha
+                                </label>
+                                <input
+                                    type="password"
+                                    id="password"
+                                    className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-accent-beige"
+                                    placeholder="Sua senha"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="flex flex-col space-y-4">
+                                <button
+                                    type="submit"
+                                    className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105"
                                 >
-                                    <option value="Admin">Admin</option>
-                                    <option value="Comercial">Comercial</option>
-                                    <option value="Colaborador">Colaborador</option>
-                                </select>
-                                {userId && (
-                                    <span className="text-sm text-primary-dark bg-light-grey-custom px-3 py-1 rounded-md">
-                                        ID: {userId}
-                                    </span>
-                                )}
+                                    {isRegistering ? 'Registar' : 'Entrar'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRegistering(!isRegistering)}
+                                    className="bg-light-grey-custom hover:bg-primary-dark text-primary-dark hover:text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
+                                >
+                                    {isRegistering ? 'Já tem conta? Login' : 'Não tem conta? Registar'}
+                                </button>
                             </div>
-                        </div>
-                    </header>
-
-                    <main className="container mx-auto p-4 mt-4">
-                        {activeTab === 'dashboard' && (
-                            <Dashboard
-                                clientes={getFilteredData(clientes, 'id_comercial_responsavel')}
-                                contratos={getFilteredData(contratos, 'id_comercial')}
-                                utilizadores={utilizadores}
-                                markPendingAsResolved={markPendingAsResolved}
-                                currentUserRole={currentUserRole}
-                                detalhesCredito={detalhesCredito}
-                                detalhesSeguro={detalhesSeguro}
-                                detalhesLegalizacaoConsultoria={detalhesLegalizacaoConsultoria}
-                                tarefas={getFilteredData(tarefas, 'id_utilizador_responsavel')}
-                                showAppModal={showAppModal}
-                            />
-                        )}
-                        {activeTab === 'clientes' && (
-                            <ClientManagement
-                                clientes={getFilteredData(clientes, 'id_comercial_responsavel')}
-                                addClient={addClient}
-                                updateClient={updateClient}
-                                deleteClient={deleteClient}
-                                contratos={contratos}
-                                utilizadores={utilizadores}
-                                currentUserRole={currentUserRole}
-                                showAppModal={showAppModal}
-                                interacoes={interacoes}
-                                addInteraction={addInteraction}
-                            />
-                        )}
-                        {activeTab === 'contratos' && (
-                            <ContractManagement
-                                contratos={getFilteredData(contratos, 'id_comercial')}
-                                addContract={addContract}
-                                updateContract={updateContract}
-                                deleteContract={deleteContract}
-                                clientes={clientes}
-                                fornecedores={fornecedores}
-                                financeiras={financeiras}
-                                companhiasSeguros={companhiasSeguros}
-                                utilizadores={utilizadores}
-                                currentUserRole={currentUserRole}
-                                showAppModal={showAppModal}
-                                detalhesCredito={detalhesCredito}
-                                detalhesSeguro={detalhesSeguro}
-                                detalhesLegalizacaoConsultoria={detalhesLegalizacaoConsultoria}
-                                interacoes={interacoes}
-                                addInteraction={addInteraction}
-                            />
-                        )}
-                        {activeTab === 'tarefas' && (
-                            <TaskManagement
-                                tarefas={getFilteredData(tarefas, 'id_utilizador_responsavel')}
-                                addTask={addTask}
-                                updateTask={updateTask}
-                                deleteTask={deleteTask}
-                                clientes={clientes}
-                                contratos={contratos}
-                                utilizadores={utilizadores}
-                                currentUserRole={currentUserRole}
-                                showAppModal={showAppModal}
-                            />
-                        )}
-                        {activeTab === 'fornecedores' && currentUserRole === 'Admin' && (
-                            <SuppliersFinancialsManagement
-                                fornecedores={fornecedores}
-                                financeiras={financeiras}
-                                companhiasSeguros={companhiasSeguros}
-                                addEntity={addSupplierFinanceiraCompanhia}
-                                updateEntity={updateSupplierFinanceiraCompanhia}
-                                deleteEntity={deleteSupplierFinanceiraCompanhia}
-                                showAppModal={showAppModal}
-                            />
-                        )}
-                        {activeTab === 'relatorios' && currentUserRole === 'Admin' && (
-                            <SupplierReport
-                                fornecedores={fornecedores}
-                                contratos={contratos}
-                                detalhesCredito={detalhesCredito}
-                                clientes={clientes}
-                                showAppModal={showAppModal}
-                            />
-                        )}
-                    </main>
-
-                    <footer className="bg-primary-dark text-white p-4 mt-8 rounded-t-lg">
-                        <div className="container mx-auto text-center text-sm">
-                            <p>&copy; 2024 THE WAY. Todos os direitos reservados.</p>
-                        </div>
-                    </footer>
-
-                    {showModal && (
-                        <Modal
-                            title={modalContent.title}
-                            message={modalContent.message}
-                            onClose={hideAppModal}
-                            onConfirm={modalContent.onConfirm}
-                            showConfirm={!!modalContent.onConfirm}
-                        />
-                    )}
+                        </form>
+                    </div>
                 </div>
             );
         };
+
 
         // Componente Dashboard
         const Dashboard = ({ clientes, contratos, utilizadores, markPendingAsResolved, currentUserRole, detalhesCredito, detalhesSeguro, detalhesLegalizacaoConsultoria, tarefas, showAppModal }) => {
@@ -832,7 +327,7 @@
                     valor = detalhe ? detalhe.comissao_financeira + detalhe.comissao_fornecedor : 0;
                 } else if (c.tipo_servico === 'Seguro') {
                     const detalhe = detalhesSeguro.find(ds => ds.id_contrato === c.id_contrato);
-                    valor = detalhe ? ds.valor_premio : 0;
+                    valor = detalhe ? detalhe.valor_premio : 0;
                 } else if (c.tipo_servico === 'Legalização' || c.tipo_servico === 'Consultoria') {
                     const detalhe = detalhesLegalizacaoConsultoria.find(dlc => dlc.id_contrato === c.id_contrato);
                     valor = detalhe ? dlc.honorarios : 0;
@@ -844,6 +339,15 @@
             const contratosPorMesRef = useRef(null);
 
             useEffect(() => {
+                // Certifique-se de que os elementos canvas existem antes de tentar criar gráficos
+                const ctxTipo = document.getElementById('contratosPorTipoChart');
+                const ctxMes = document.getElementById('contratosPorMesChart');
+
+                if (!ctxTipo || !ctxMes) {
+                    console.warn("Elementos canvas para gráficos não encontrados. Gráficos não serão renderizados.");
+                    return;
+                }
+
                 if (contratosPorTipoRef.current) {
                     contratosPorTipoRef.current.destroy();
                 }
@@ -857,8 +361,7 @@
                     return acc;
                 }, {});
 
-                const ctxTipo = document.getElementById('contratosPorTipoChart').getContext('2d');
-                contratosPorTipoRef.current = new Chart(ctxTipo, {
+                contratosPorTipoRef.current = new Chart(ctxTipo.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: Object.keys(contratosPorTipoData).map(label => wrapLabels(label)),
@@ -905,8 +408,7 @@
                     return dateA - dateB;
                 });
 
-                const ctxMes = document.getElementById('contratosPorMesChart').getContext('2d');
-                contratosPorMesRef.current = new Chart(ctxMes, {
+                contratosPorMesRef.current = new Chart(ctxMes.getContext('2d'), {
                     type: 'bar',
                     data: {
                         labels: sortedMonths,
@@ -1113,7 +615,8 @@
                     id_contrato: null, // Interação específica do cliente, não de contrato
                     tipo_interacao: newInteractionData.tipo_interacao,
                     observacoes: newInteractionData.observacoes,
-                    id_utilizador: currentUserId
+                    id_utilizador: currentUserId,
+                    data_interacao: new Date().toISOString() // Adicionar data de interação
                 });
                 setNewInteractionData({ tipo_interacao: 'Chamada', observacoes: '' });
                 showAppModal('Sucesso', 'Interação registada com sucesso!');
@@ -1479,7 +982,8 @@
                     id_contrato: contractId,
                     tipo_interacao: newInteractionData.tipo_interacao,
                     observacoes: newInteractionData.observacoes,
-                    id_utilizador: currentUserId
+                    id_utilizador: currentUserId,
+                    data_interacao: new Date().toISOString() // Adicionar data de interação
                 });
                 setNewInteractionData({ tipo_interacao: 'Chamada', observacoes: '' });
                 showAppModal('Sucesso', 'Interação registada com sucesso!');
@@ -1822,7 +1326,7 @@
                                         <div className="flex justify-end mt-4">
                                             <button
                                                 onClick={() => sendEmailToSupplier(contractDetails)}
-                                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105"
+                                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition duration-300 transform hover:scale-105"
                                             >
                                                 Enviar Email ao Fornecedor
                                             </button>
@@ -2542,6 +2046,528 @@
                         </div>
                     )}
                 </section>
+            );
+        };
+
+        // Componente Principal da Aplicação
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [showModal, setShowModal] = useState(false);
+            const [modalContent, setModalContent] = useState({ title: '', message: '', onClose: null, onConfirm: null, showConfirm: false });
+
+            // Firebase states
+            const [db, setDb] = useState(null);
+            const [auth, setAuth] = useState(null);
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+            const [currentUserRole, setCurrentUserRole] = useState('Colaborador'); // Default role
+
+            // Data states
+            const [clientes, setClientes] = useState([]);
+            const [contratos, setContratos] = useState([]);
+            const [detalhesCredito, setDetalhesCredito] = useState([]);
+            const [detalhesSeguro, setDetalhesSeguro] = useState([]);
+            const [detalhesLegalizacaoConsultoria, setDetalhesLegalizacaoConsultoria] = useState([]);
+            const [utilizadores, setUtilizadores] = useState([]);
+            const [fornecedores, setFornecedores] = useState([]);
+            const [financeiras, setFinanceiras] = useState([]);
+            const [companhiasSeguros, setCompanhiasSeguros] = useState([]);
+            const [tarefas, setTarefas] = useState([]);
+            const [interacoes, setInteracoes] = useState([]);
+
+            const showAppModal = useCallback((title, message, onConfirm = null, showConfirm = false) => {
+                setModalContent({ title, message, onClose: () => setShowModal(false), onConfirm, showConfirm });
+                setShowModal(true);
+            }, []);
+
+            // Initialize Firebase and set up auth listener
+            useEffect(() => {
+                try {
+                    const app = window.initializeApp(window.firebaseConfig);
+                    const firestore = window.getFirestore(app);
+                    const firebaseAuth = window.getAuth(app);
+                    setDb(firestore);
+                    setAuth(firebaseAuth);
+
+                    const unsubscribe = window.onAuthStateChanged(firebaseAuth, async (user) => {
+                        if (user) {
+                            setIsAuthenticated(true);
+                            setCurrentUser(user);
+                            // Fetch user role
+                            const usersCollection = window.collection(firestore, `artifacts/${window.firebaseAppId}/public/data/utilizadores`);
+                            const userDoc = await window.getDocs(window.query(usersCollection, window.where('email', '==', user.email)));
+                            if (!userDoc.empty) {
+                                setCurrentUserRole(userDoc.docs[0].data().role);
+                            } else {
+                                // If user not found in 'utilizadores', assign default 'Colaborador'
+                                setCurrentUserRole('Colaborador');
+                                // Optionally, add the new user to 'utilizadores' with a default role
+                                const newUserData = {
+                                    id_utilizador: user.uid,
+                                    nome: user.displayName || user.email,
+                                    email: user.email,
+                                    role: 'Colaborador'
+                                };
+                                await window.setDoc(window.doc(usersCollection, user.uid), newUserData);
+                            }
+
+                        } else {
+                            setIsAuthenticated(false);
+                            setCurrentUser(null);
+                            setCurrentUserRole('Colaborador'); // Reset role on logout
+                        }
+                    });
+
+                    return () => unsubscribe();
+                } catch (error) {
+                    console.error("Erro ao inicializar Firebase:", error);
+                    showAppModal('Erro de Inicialização', `Não foi possível inicializar o Firebase: ${error.message}`);
+                }
+            }, [showAppModal]);
+
+            // Sign in anonymously if no initial token
+            useEffect(() => {
+                if (auth && !currentUser && !isAuthenticated) {
+                    const signIn = async () => {
+                        try {
+                            if (window.initialAuthToken) {
+                                await window.signInWithCustomToken(auth, window.initialAuthToken);
+                            } else {
+                                await window.signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Erro na autenticação inicial:", error);
+                            showAppModal('Erro de Autenticação', `Não foi possível autenticar: ${error.message}`);
+                        }
+                    };
+                    signIn();
+                }
+            }, [auth, currentUser, isAuthenticated, showAppModal]);
+
+
+            // Fetch data from Firestore
+            useEffect(() => {
+                if (!db || !isAuthenticated) return;
+
+                const fetchData = (collectionName, setState, idField) => {
+                    const colRef = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
+                    return window.onSnapshot(colRef, (snapshot) => {
+                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), [idField]: doc.data()[idField] || doc.id }));
+                        setState(data);
+                    }, (error) => {
+                        console.error(`Erro ao buscar ${collectionName}:`, error);
+                        showAppModal('Erro de Dados', `Não foi possível carregar ${collectionName}: ${error.message}`);
+                    });
+                };
+
+                const unsubClientes = fetchData('clientes', setClientes, 'id_cliente');
+                const unsubContratos = fetchData('contratos', setContratos, 'id_contrato');
+                const unsubDetalhesCredito = fetchData('detalhes_credito', setDetalhesCredito, 'id_contrato');
+                const unsubDetalhesSeguro = fetchData('detalhes_seguro', setDetalhesSeguro, 'id_contrato');
+                const unsubDetalhesLegalizacaoConsultoria = fetchData('detalhes_legalizacao_consultoria', setDetalhesLegalizacaoConsultoria, 'id_contrato');
+                const unsubUtilizadores = fetchData('utilizadores', setUtilizadores, 'id_utilizador');
+                const unsubFornecedores = fetchData('fornecedores', setFornecedores, 'id_fornecedor');
+                const unsubFinanceiras = fetchData('financeiras', setFinanceiras, 'id_financeira');
+                const unsubCompanhiasSeguros = fetchData('companhias_seguros', setCompanhiasSeguros, 'id_companhia');
+                const unsubTarefas = fetchData('tarefas', setTarefas, 'id_tarefa');
+                const unsubInteracoes = fetchData('interacoes', setInteracoes, 'id_interacao');
+
+
+                // Seed initial data if collections are empty
+                const seedData = async () => {
+                    const collectionsToSeed = [
+                        { name: 'clientes', data: initialMockData.clientes, idField: 'id_cliente' },
+                        { name: 'contratos', data: initialMockData.contratos, idField: 'id_contrato' },
+                        { name: 'detalhes_credito', data: initialMockData.detalhes_credito, idField: 'id_contrato' },
+                        { name: 'detalhes_seguro', data: initialMockData.detalhes_seguro, idField: 'id_contrato' },
+                        { name: 'detalhes_legalizacao_consultoria', data: initialMockData.detalhes_legalizacao_consultoria, idField: 'id_contrato' },
+                        { name: 'utilizadores', data: initialMockData.utilizadores, idField: 'id_utilizador' },
+                        { name: 'fornecedores', data: initialMockData.fornecedores, idField: 'id_fornecedor' },
+                        { name: 'financeiras', data: initialMockData.financeiras, idField: 'id_financeira' },
+                        { name: 'companhias_seguros', data: initialMockData.companhias_seguros, idField: 'id_companhia' },
+                        { name: 'tarefas', data: initialMockData.tarefas, idField: 'id_tarefa' },
+                        { name: 'interacoes', data: initialMockData.interacoes, idField: 'id_interacao' },
+                    ];
+
+                    for (const { name, data, idField } of collectionsToSeed) {
+                        const colRef = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${name}`);
+                        const existingDocs = await window.getDocs(colRef);
+                        if (existingDocs.empty) {
+                            console.log(`Seeding ${name} collection...`);
+                            for (const item of data) {
+                                await window.setDoc(window.doc(colRef, item[idField]), item);
+                            }
+                        }
+                    }
+                };
+                seedData();
+
+
+                return () => {
+                    unsubClientes();
+                    unsubContratos();
+                    unsubDetalhesCredito();
+                    unsubDetalhesSeguro();
+                    unsubDetalhesLegalizacaoConsultoria();
+                    unsubUtilizadores();
+                    unsubFornecedores();
+                    unsubFinanceiras();
+                    unsubCompanhiasSeguros();
+                    unsubTarefas();
+                    unsubInteracoes();
+                };
+            }, [db, isAuthenticated, showAppModal]);
+
+            // CRUD Operations
+            const addFirestoreDoc = async (collectionName, data, idField = null) => {
+                try {
+                    const colRef = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
+                    if (idField && data[idField]) {
+                        await window.setDoc(window.doc(colRef, data[idField]), data);
+                        showAppModal('Sucesso', 'Documento adicionado/atualizado com sucesso!');
+                    } else {
+                        await window.addDoc(colRef, data);
+                        showAppModal('Sucesso', 'Documento adicionado com sucesso!');
+                    }
+                } catch (e) {
+                    console.error("Erro ao adicionar documento: ", e);
+                    showAppModal('Erro', `Erro ao adicionar documento: ${e.message}`);
+                }
+            };
+
+            const updateFirestoreDoc = async (collectionName, id, data) => {
+                try {
+                    const docRef = window.doc(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`, id);
+                    await window.updateDoc(docRef, data);
+                    showAppModal('Sucesso', 'Documento atualizado com sucesso!');
+                } catch (e) {
+                    console.error("Erro ao atualizar documento: ", e);
+                    showAppModal('Erro', `Erro ao atualizar documento: ${e.message}`);
+                }
+            };
+
+            const deleteFirestoreDoc = async (collectionName, id) => {
+                showAppModal('Confirmar Eliminação', 'Tem certeza que deseja eliminar este item? Esta ação é irreversível.', async () => {
+                    try {
+                        const docRef = window.doc(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`, id);
+                        await window.deleteDoc(docRef);
+                        showAppModal('Sucesso', 'Documento eliminado com sucesso!');
+                    } catch (e) {
+                        console.error("Erro ao eliminar documento: ", e);
+                        showAppModal('Erro', `Erro ao eliminar documento: ${e.message}`);
+                    }
+                }, true);
+            };
+
+            // Specific CRUD functions for each collection
+            const addClient = (clientData) => addFirestoreDoc('clientes', { ...clientData, data_criacao: new Date().toISOString().split('T')[0], id_cliente: `CLI-${Date.now()}` }, 'id_cliente');
+            const updateClient = (clientData) => updateFirestoreDoc('clientes', clientData.id, clientData);
+            const deleteClient = (id) => deleteFirestoreDoc('clientes', id);
+
+            const addContract = async (contractData) => {
+                const newContract = { ...contractData, data_criacao: new Date().toISOString().split('T')[0], id_contrato: `CON-${Date.now()}` };
+                await addFirestoreDoc('contratos', newContract, 'id_contrato');
+
+                // Add specific details based on type
+                if (newContract.tipo_servico === 'Crédito') {
+                    await addFirestoreDoc('detalhes_credito', {
+                        id_contrato: newContract.id_contrato,
+                        id_financeira: newContract.id_financeira,
+                        id_fornecedor: newContract.id_fornecedor,
+                        valor_financiado: parseFloat(newContract.valor_financiado) || 0,
+                        prazo_meses: parseInt(newContract.prazo_meses) || 0,
+                        comissao_financeira: parseFloat(newContract.comissao_financeira) || 0,
+                        comissao_fornecedor: parseFloat(newContract.comissao_fornecedor) || 0,
+                        documentos_em_falta: newContract.documentos_em_falta,
+                        lista_documentos_em_falta: newContract.lista_documentos_em_falta,
+                        credito_realizado: newContract.credito_realizado,
+                        data_realizacao: newContract.data_realizacao
+                    }, 'id_contrato');
+                } else if (newContract.tipo_servico === 'Seguro') {
+                    await addFirestoreDoc('detalhes_seguro', {
+                        id_contrato: newContract.id_contrato,
+                        id_companhia: newContract.id_companhia,
+                        tipo_seguro: newContract.tipo_seguro,
+                        valor_premio: parseFloat(newContract.valor_premio) || 0,
+                        freelancer: newContract.freelancer,
+                        mediador: newContract.mediador,
+                        renovacao_automatica: newContract.renovacao_automatica,
+                        data_renovacao: newContract.data_renovacao
+                    }, 'id_contrato');
+                } else if (newContract.tipo_servico === 'Legalização' || newContract.tipo_servico === 'Consultoria') {
+                    await addFirestoreDoc('detalhes_legalizacao_consultoria', {
+                        id_contrato: newContract.id_contrato,
+                        tipo_processo: newContract.tipo_processo,
+                        estado_processo: newContract.estado_processo,
+                        honorarios: parseFloat(newContract.honorarios) || 0,
+                        documentos_necessarios: newContract.documentos_necessarios
+                    }, 'id_contrato');
+                }
+            };
+
+            const updateContract = async (contractData) => {
+                await updateFirestoreDoc('contratos', contractData.id, contractData);
+
+                // Update specific details based on type
+                const detailCollections = {
+                    'Crédito': 'detalhes_credito',
+                    'Seguro': 'detalhes_seguro',
+                    'Legalização': 'detalhes_legalizacao_consultoria',
+                    'Consultoria': 'detalhes_legalizacao_consultoria'
+                };
+                const detailCollectionName = detailCollections[contractData.tipo_servico];
+                if (detailCollectionName) {
+                    const existingDetail = (await window.getDocs(window.query(window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${detailCollectionName}`), window.where('id_contrato', '==', contractData.id_contrato)))).docs[0];
+                    if (existingDetail) {
+                        await updateFirestoreDoc(detailCollectionName, existingDetail.id, contractData);
+                    } else {
+                        // If no existing detail, create one
+                        await addFirestoreDoc(detailCollectionName, { id_contrato: contractData.id_contrato, ...contractData }, 'id_contrato');
+                    }
+                }
+            };
+
+            const deleteContract = async (id) => {
+                const contractToDelete = contratos.find(c => c.id === id);
+                if (!contractToDelete) {
+                    showAppModal('Erro', 'Contrato não encontrado para eliminação.');
+                    return;
+                }
+
+                showAppModal('Confirmar Eliminação', `Tem certeza que deseja eliminar o contrato ${contractToDelete.id_contrato} e todos os seus detalhes associados? Esta ação é irreversível.`, async () => {
+                    try {
+                        await deleteFirestoreDoc('contratos', id);
+
+                        // Delete associated details
+                        const detailCollections = {
+                            'Crédito': 'detalhes_credito',
+                            'Seguro': 'detalhes_seguro',
+                            'Legalização': 'detalhes_legalizacao_consultoria',
+                            'Consultoria': 'detalhes_legalizacao_consultoria'
+                        };
+                        const detailCollectionName = detailCollections[contractToDelete.tipo_servico];
+                        if (detailCollectionName) {
+                            const existingDetail = (await window.getDocs(window.query(window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${detailCollectionName}`), window.where('id_contrato', '==', contractToDelete.id_contrato)))).docs[0];
+                            if (existingDetail) {
+                                await deleteFirestoreDoc(detailCollectionName, existingDetail.id);
+                            }
+                        }
+                        showAppModal('Sucesso', 'Contrato e detalhes associados eliminados com sucesso!');
+                    } catch (e) {
+                        console.error("Erro ao eliminar contrato e detalhes: ", e);
+                        showAppModal('Erro', `Erro ao eliminar contrato e detalhes: ${e.message}`);
+                    }
+                }, true);
+            };
+
+            const addTask = (taskData) => addFirestoreDoc('tarefas', { ...taskData, data_criacao: new Date().toISOString().split('T')[0], id_tarefa: `TASK-${Date.now()}` }, 'id_tarefa');
+            const updateTask = (taskData) => updateFirestoreDoc('tarefas', taskData.id, taskData);
+            const deleteTask = (id) => deleteFirestoreDoc('tarefas', id);
+
+            const addEntity = (type, entityData) => {
+                let collectionName = '';
+                let idPrefix = '';
+                if (type === 'fornecedores') { collectionName = 'fornecedores'; idPrefix = 'FOR-'; }
+                else if (type === 'financeiras') { collectionName = 'financeiras'; idPrefix = 'FIN-'; }
+                else if (type === 'companhias') { collectionName = 'companhias_seguros'; idPrefix = 'COMP-'; }
+                else return;
+                addFirestoreDoc(collectionName, { ...entityData, [`id_${type.slice(0, -1)}`]: `${idPrefix}${Date.now()}` }, `id_${type.slice(0, -1)}`);
+            };
+            const updateEntity = (type, id, entityData) => {
+                let collectionName = '';
+                if (type === 'fornecedor') collectionName = 'fornecedores';
+                else if (type === 'financeira') collectionName = 'financeiras';
+                else if (type === 'companhia') collectionName = 'companhias_seguros';
+                else return;
+                updateFirestoreDoc(collectionName, id, entityData);
+            };
+            const deleteEntity = (type, id) => {
+                let collectionName = '';
+                if (type === 'fornecedor') collectionName = 'fornecedores';
+                else if (type === 'financeira') collectionName = 'financeiras';
+                else if (type === 'companhia') collectionName = 'companhias_seguros';
+                else return;
+                deleteFirestoreDoc(collectionName, id);
+            };
+
+            const addInteraction = (interactionData) => addFirestoreDoc('interacoes', { ...interactionData, id_interacao: `INT-${Date.now()}`, data_interacao: new Date().toISOString() }, 'id_interacao');
+
+            const markPendingAsResolved = async (contractId) => {
+                const contract = contratos.find(c => c.id_contrato === contractId);
+                if (contract) {
+                    showAppModal('Resolver Pendência', `Tem a certeza que quer marcar o contrato ${contract.id_contrato} como 'Ativo'?`, async () => {
+                        await updateContract({ ...contract, estado: 'Ativo' });
+                        showAppModal('Sucesso', `Contrato ${contract.id_contrato} marcado como 'Ativo'.`);
+                    }, true);
+                }
+            };
+
+            const handleLogin = async (email, password) => {
+                try {
+                    await window.signInWithEmailAndPassword(auth, email, password);
+                    showAppModal('Sucesso', 'Login realizado com sucesso!');
+                } catch (error) {
+                    console.error("Erro no login:", error);
+                    showAppModal('Erro de Login', `Erro ao fazer login: ${error.message}`);
+                }
+            };
+
+            const handleRegister = async (email, password) => {
+                try {
+                    const userCredential = await window.createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    // Add new user to 'utilizadores' collection with default 'Colaborador' role
+                    const usersCollection = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/utilizadores`);
+                    await window.setDoc(window.doc(usersCollection, user.uid), {
+                        id_utilizador: user.uid,
+                        nome: user.email, // Use email as default name for new registrations
+                        email: user.email,
+                        role: 'Colaborador' // Default role for new registrations
+                    });
+                    showAppModal('Sucesso', 'Registo realizado com sucesso! Pode agora fazer login.');
+                } catch (error) {
+                    console.error("Erro no registo:", error);
+                    showAppModal('Erro de Registo', `Erro ao registar: ${error.message}`);
+                }
+            };
+
+            const handleLogout = async () => {
+                try {
+                    await window.signOut(auth);
+                    showAppModal('Sucesso', 'Sessão terminada com sucesso!');
+                } catch (error) {
+                    console.error("Erro ao fazer logout:", error);
+                    showAppModal('Erro de Logout', `Erro ao terminar sessão: ${error.message}`);
+                }
+            };
+
+            if (!isAuthenticated) {
+                return <AuthScreen onLogin={handleLogin} onRegister={handleRegister} showAppModal={showAppModal} />;
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col lg:flex-row bg-gray-100">
+                    {/* Sidebar de Navegação */}
+                    <aside className="w-full lg:w-64 bg-primary-dark text-white p-6 flex flex-col space-y-4 rounded-b-xl lg:rounded-r-xl lg:rounded-bl-none shadow-lg">
+                        <h1 className="text-3xl font-bold text-accent-beige mb-6 text-center">THE WAY</h1>
+                        <p className="text-sm text-center text-light-grey-custom mb-4">
+                            Bem-vindo(a), {currentUser?.email || 'Utilizador'}! <br />
+                            Função: <span className="font-semibold">{currentUserRole}</span>
+                        </p>
+                        <nav className="flex flex-col space-y-2">
+                            <button onClick={() => setActiveTab('dashboard')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'dashboard' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Dashboard</button>
+                            <button onClick={() => setActiveTab('clientes')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'clientes' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Gestão de Clientes</button>
+                            <button onClick={() => setActiveTab('contratos')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'contratos' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Gestão de Contratos</button>
+                            <button onClick={() => setActiveTab('tarefas')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'tarefas' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Gestão de Tarefas</button>
+                            {currentUserRole === 'Admin' && (
+                                <button onClick={() => setActiveTab('fornecedores')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'fornecedores' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Fornecedores/Financeiras</button>
+                            )}
+                            {currentUserRole === 'Admin' && (
+                                <button onClick={() => setActiveTab('relatorios')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'relatorios' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Relatórios</button>
+                            )}
+                        </nav>
+                        <div className="mt-auto pt-4 border-t border-light-grey-custom">
+                            <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105">
+                                Terminar Sessão
+                            </button>
+                        </div>
+                    </aside>
+
+                    {/* Conteúdo Principal */}
+                    <main className="flex-1 p-8 overflow-y-auto">
+                        {activeTab === 'dashboard' && (
+                            <Dashboard
+                                clientes={clientes}
+                                contratos={contratos}
+                                utilizadores={utilizadores}
+                                markPendingAsResolved={markPendingAsResolved}
+                                currentUserRole={currentUserRole}
+                                detalhesCredito={detalhesCredito}
+                                detalhesSeguro={detalhesSeguro}
+                                detalhesLegalizacaoConsultoria={detalhesLegalizacaoConsultoria}
+                                tarefas={tarefas}
+                                showAppModal={showAppModal}
+                            />
+                        )}
+                        {activeTab === 'clientes' && (
+                            <ClientManagement
+                                clientes={clientes}
+                                addClient={addClient}
+                                updateClient={updateClient}
+                                deleteClient={deleteClient}
+                                contratos={contratos}
+                                utilizadores={utilizadores}
+                                currentUserRole={currentUserRole}
+                                showAppModal={showAppModal}
+                                interacoes={interacoes}
+                                addInteraction={addInteraction}
+                            />
+                        )}
+                        {activeTab === 'contratos' && (
+                            <ContractManagement
+                                contratos={contratos}
+                                addContract={addContract}
+                                updateContract={updateContract}
+                                deleteContract={deleteContract}
+                                clientes={clientes}
+                                fornecedores={fornecedores}
+                                financeiras={financeiras}
+                                companhiasSeguros={companhiasSeguros}
+                                utilizadores={utilizadores}
+                                currentUserRole={currentUserRole}
+                                showAppModal={showAppModal}
+                                detalhesCredito={detalhesCredito}
+                                detalhesSeguro={detalhesSeguro}
+                                detalhesLegalizacaoConsultoria={detalhesLegalizacaoConsultoria}
+                                interacoes={interacoes}
+                                addInteraction={addInteraction}
+                            />
+                        )}
+                        {activeTab === 'tarefas' && (
+                            <TaskManagement
+                                tarefas={tarefas}
+                                addTask={addTask}
+                                updateTask={updateTask}
+                                deleteTask={deleteTask}
+                                clientes={clientes}
+                                contratos={contratos}
+                                utilizadores={utilizadores}
+                                currentUserRole={currentUserRole}
+                                showAppModal={showAppModal}
+                            />
+                        )}
+                        {activeTab === 'fornecedores' && currentUserRole === 'Admin' && (
+                            <SuppliersFinancialsManagement
+                                fornecedores={fornecedores}
+                                financeiras={financeiras}
+                                companhiasSeguros={companhiasSeguros}
+                                addEntity={addEntity}
+                                updateEntity={updateEntity}
+                                deleteEntity={deleteEntity}
+                                showAppModal={showAppModal}
+                            />
+                        )}
+                        {activeTab === 'relatorios' && currentUserRole === 'Admin' && (
+                            <SupplierReport
+                                fornecedores={fornecedores}
+                                contratos={contratos}
+                                detalhesCredito={detalhesCredito}
+                                clientes={clientes}
+                                showAppModal={showAppModal}
+                            />
+                        )}
+                    </main>
+
+                    {showModal && (
+                        <Modal
+                            title={modalContent.title}
+                            message={modalContent.message}
+                            onClose={modalContent.onClose}
+                            onConfirm={modalContent.onConfirm}
+                            showConfirm={modalContent.showConfirm}
+                        />
+                    )}
+                </div>
             );
         };
 
