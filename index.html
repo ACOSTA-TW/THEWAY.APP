@@ -8,60 +8,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carregamento do Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Carregamento das bibliotecas React e ReactDOM -->
-    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <!-- Carregamento do Babel para transpilar JSX no navegador -->
+    <!-- Carregamento do Babel para transpilagem de JSX no navegador -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase SDKs: Importação das funções necessárias e exposição ao escopo global -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- Carregamento de React e ReactDOM (UMD builds, expõem globais React e ReactDOM) -->
+    <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
 
-        // As variáveis __app_id, __firebase_config e __initial_auth_token
-        // são fornecidas automaticamente pelo ambiente Canvas.
-        // Usamos um fallback para 'default-app-id' e uma configuração vazia
-        // para compatibilidade fora do ambiente Canvas, se necessário.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU", // Fallback para a sua chave API se __firebase_config não estiver disponível
-            authDomain: "theway-app-ca8e6.firebaseapp.com",
-            projectId: "theway-app-ca8e6",
-            storageBucket: "theway-app-ca8e6.appspot.com",
-            messagingSenderId: "624037320749",
-            appId: "1:624037320749:web:57dbc62528abb0177280a4",
-            measurementId: "G-72EGLY3Q4X"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-
-        // Expor a configuração e as funções do Firebase para o objeto 'window'
-        // Isso permite que o código React (que é transpilado por Babel) acesse essas funções.
-        window.firebaseConfig = firebaseConfig;
-        window.firebaseAppId = appId; // Usar o appId fornecido pelo ambiente
-        window.initialAuthToken = initialAuthToken; // Expor o token de autenticação
-
-        window.initializeApp = initializeApp;
-        window.getAuth = getAuth;
-        window.signInAnonymously = signInAnonymously;
-        window.signInWithCustomToken = signInWithCustomToken; // Expor signInWithCustomToken
-        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword; // Expor createUserWithEmailAndPassword
-        window.signInWithEmailAndPassword = signInWithEmailAndPassword; // Expor signInWithEmailAndPassword
-        window.signOut = signOut; // Expor signOut
-        window.getFirestore = getFirestore;
-        window.collection = collection;
-        window.doc = doc;
-        window.addDoc = addDoc;
-        window.updateDoc = updateDoc;
-        window.deleteDoc = deleteDoc;
-        window.onSnapshot = onSnapshot;
-        window.getDocs = getDocs;
-
-        // A inicialização da aplicação Firebase será feita dentro do componente React
-        // para garantir que o DOM e o ambiente React estão completamente prontos.
-    </script>
+    <!-- Carregamento das bibliotecas Firebase (UMD compat builds, expõem global 'firebase') -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
         /* Chosen Palette: The Way - Calm Harmony */
@@ -129,9 +86,12 @@
 <body class="bg-gray-50 text-gray-800">
     <div id="root"></div>
 
+    <!-- Script principal da aplicação React, agora com type="text/babel" para transpilação -->
     <script type="text/babel">
-        console.log("Babel script started."); // Linha de depuração
+        // Acessa as variáveis globais expostas pelos scripts carregados acima
         const { useState, useEffect, useRef, useCallback } = React;
+
+        console.log("React script started (as text/babel)."); // Linha de depuração
 
         // Função auxiliar para envolver rótulos longos em gráficos
         const wrapLabels = (label, maxLength = 16) => {
@@ -190,8 +150,8 @@
                 { id_utilizador: 'USER-004', nome: 'Colaborador Carlos', email: 'carlos@theway.com', role: 'Colaborador' },
             ],
             fornecedores: [
-                { id_fornecedor: 'FOR-001', nome: 'Fornecedor Crédito A', nif: '500111222', contacto: '211234567', email: 'forn.a@example.com', morada: 'Rua do Fornecedor A, 1' },
-                { id_fornecedor: 'FOR-002', nome: 'Fornecedor Crédito B', nif: '500333444', contacto: '212345678', email: 'forn.b@example.com', morada: 'Avenida do Crédito B, 2' },
+                { id_fornecedor: 'FOR-001', nome: 'Fornecedor Crédito A', nif: '500111222', contacto: '211234567', email: 'forn.a@example.com', morada: 'Rua do Fornecedor A, 1', certidao_permanente: 'CP-12345', iban: 'PT50000000000000000000000', uploads: ['Contrato_FornA.pdf'] },
+                { id_fornecedor: 'FOR-002', nome: 'Fornecedor Crédito B', nif: '500333444', contacto: '212345678', email: 'forn.b@example.com', morada: 'Avenida do Crédito B, 2', certidao_permanente: 'CP-67890', iban: 'PT50111111111111111111111', uploads: [] },
             ],
             financeiras: [
                 { id_financeira: 'FIN-001', nome: 'Banco X', contacto: '213000111', email: 'banco.x@example.com' },
@@ -243,78 +203,6 @@
             );
         };
 
-        // Componente de Autenticação
-        const AuthScreen = ({ onLogin, onRegister, showAppModal }) => {
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const [isRegistering, setIsRegistering] = useState(false);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                if (isRegistering) {
-                    await onRegister(email, password);
-                } else {
-                    await onLogin(email, password);
-                }
-            };
-
-            return (
-                <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-                    <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-                        <h2 className="text-3xl font-bold text-primary-dark mb-6 text-center">
-                            {isRegistering ? 'Registar' : 'Login'}
-                        </h2>
-                        <form onSubmit={handleSubmit}>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                                    placeholder="Seu email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="mb-6">
-                                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                                    Senha
-                                </label>
-                                <input
-                                    type="password"
-                                    id="password"
-                                    className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                                    placeholder="Sua senha"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="flex flex-col space-y-4">
-                                <button
-                                    type="submit"
-                                    className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105"
-                                >
-                                    {isRegistering ? 'Registar' : 'Entrar'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsRegistering(!isRegistering)}
-                                    className="bg-light-grey-custom hover:bg-primary-dark text-primary-dark hover:text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105"
-                                >
-                                    {isRegistering ? 'Já tem conta? Login' : 'Não tem conta? Registar'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            );
-        };
-
-
         // Componente Dashboard
         const Dashboard = ({ clientes, contratos, utilizadores, markPendingAsResolved, currentUserRole, detalhesCredito, detalhesSeguro, detalhesLegalizacaoConsultoria, tarefas, showAppModal }) => {
             const contratosPendentes = contratos.filter(c => c.estado === 'Pendente');
@@ -330,7 +218,7 @@
                     valor = detalhe ? detalhe.valor_premio : 0;
                 } else if (c.tipo_servico === 'Legalização' || c.tipo_servico === 'Consultoria') {
                     const detalhe = detalhesLegalizacaoConsultoria.find(dlc => dlc.id_contrato === c.id_contrato);
-                    valor = detalhe ? dlc.honorarios : 0;
+                    valor = detalhe ? detalhe.honorarios : 0; // Corrected: changed 'dlc' to 'detalhe'
                 }
                 return sum + valor;
             }, 0);
@@ -510,9 +398,7 @@
                                         <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Descrição/Título</th>
                                         <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Responsável</th>
                                         <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Data Vencimento/Criação</th>
-                                        {currentUserRole !== 'Colaborador' && (
-                                            <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Ações</th>
-                                        )}
+                                        <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -528,16 +414,14 @@
                                                 <td className="py-3 px-4 text-sm text-gray-700">{c.observacoes || 'N/A'}</td>
                                                 <td className="py-3 px-4 text-sm text-gray-700">{comercial ? comercial.nome : 'N/A'}</td>
                                                 <td className="py-3 px-4 text-sm text-gray-700">{c.data_criacao} ({daysPending} dias)</td>
-                                                {currentUserRole !== 'Colaborador' && (
-                                                    <td className="py-3 px-4 text-sm text-gray-700">
-                                                        <button
-                                                            onClick={() => markPendingAsResolved(c.id_contrato)}
-                                                            className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105"
-                                                        >
-                                                            Resolver
-                                                        </button>
-                                                    </td>
-                                                )}
+                                                <td className="py-3 px-4 text-sm text-gray-700">
+                                                    <button
+                                                        onClick={() => markPendingAsResolved(c.id_contrato)}
+                                                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105"
+                                                    >
+                                                        Resolver
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -557,16 +441,14 @@
                                                 <td className="py-3 px-4 text-sm text-gray-700">{t.titulo}</td>
                                                 <td className="py-3 px-4 text-sm text-gray-700">{responsavel ? responsavel.nome : 'N/A'}</td>
                                                 <td className="py-3 px-4 text-sm text-gray-700">{t.data_vencimento}</td>
-                                                {currentUserRole !== 'Colaborador' && (
-                                                    <td className="py-3 px-4 text-sm text-gray-700">
-                                                        <button
-                                                            onClick={() => showAppModal('Concluir Tarefa', `Tem a certeza que quer marcar a tarefa "${t.titulo}" como concluída?`, async () => { await updateTask({ ...t, estado: 'Concluída' }); showAppModal('Sucesso', 'Tarefa marcada como concluída!'); })}
-                                                            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105"
-                                                        >
-                                                            Concluir
-                                                        </button>
-                                                    </td>
-                                                )}
+                                                <td className="py-3 px-4 text-sm text-gray-700">
+                                                    <button
+                                                        onClick={() => showAppModal('Concluir Tarefa', `Tem a certeza que quer marcar a tarefa "${t.titulo}" como concluída?`, async () => { await updateTask({ ...t, estado: 'Concluída' }); showAppModal('Sucesso', 'Tarefa marcada como concluída!'); })}
+                                                        className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105"
+                                                    >
+                                                        Concluir
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -579,7 +461,7 @@
         };
 
         // Componente Gestão de Clientes
-        const ClientManagement = ({ clientes, addClient, updateClient, deleteClient, contratos, utilizadores, currentUserRole, showAppModal, interacoes, addInteraction }) => {
+        const ClientManagement = ({ clientes, addClient, updateClient, deleteClient, contratos, utilizadores, showAppModal, interacoes, addInteraction }) => {
             const [searchTerm, setSearchTerm] = useState('');
             const [filterType, setFilterType] = useState('');
             const [editingClient, setEditingClient] = useState(null);
@@ -609,7 +491,7 @@
                     showAppModal('Atenção', 'Por favor, adicione uma observação para a interação.');
                     return;
                 }
-                const currentUserId = window.auth.currentUser?.uid || 'anonymous'; // Obter o ID do utilizador logado
+                const currentUserId = firebase.auth().currentUser?.uid || 'admin-user'; // Obter o ID do utilizador logado (sempre admin neste caso)
                 await addInteraction({
                     id_cliente: clientId,
                     id_contrato: null, // Interação específica do cliente, não de contrato
@@ -699,14 +581,12 @@
                                 <option value="Empresa">Empresa</option>
                             </select>
                         </div>
-                        {currentUserRole !== 'Colaborador' && (
-                            <button
-                                onClick={() => { setShowClientForm(true); setEditingClient(null); setNewClientData({ nome: '', nif: '', data_nascimento: '', email: '', telefone: '', morada: '', tipo_cliente: 'Particular', id_comercial_responsavel: '', rgpd_assinado: false, observacoes: '', uploads: [] }); setClientDetails(null); }}
-                                className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 w-full sm:w-auto"
-                            >
-                                Adicionar Novo Cliente
-                            </button>
-                        )}
+                        <button
+                            onClick={() => { setShowClientForm(true); setEditingClient(null); setNewClientData({ nome: '', nif: '', data_nascimento: '', email: '', telefone: '', morada: '', tipo_cliente: 'Particular', id_comercial_responsavel: '', rgpd_assinado: false, observacoes: '', uploads: [] }); setClientDetails(null); }}
+                            className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 w-full sm:w-auto"
+                        >
+                            Adicionar Novo Cliente
+                        </button>
                     </div>
 
                     {showClientForm && (
@@ -924,12 +804,8 @@
                                         <td className="py-3 px-4 text-sm text-gray-700">{client.rgpd_assinado ? '✅' : '❌'}</td>
                                         <td className="py-3 px-4 text-sm text-gray-700 flex space-x-2">
                                             <button onClick={() => viewDetails(client)} className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Ver Detalhes</button>
-                                            {(currentUserRole === 'Admin' || currentUserRole === 'Comercial') && (
-                                                <>
-                                                    <button onClick={() => startEdit(client)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
-                                                    <button onClick={() => deleteClient(client.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
-                                                </>
-                                            )}
+                                            <button onClick={() => startEdit(client)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
+                                            <button onClick={() => deleteClient(client.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -941,7 +817,7 @@
         };
 
         // Componente Gestão de Contratos
-        const ContractManagement = ({ contratos, addContract, updateContract, deleteContract, clientes, fornecedores, financeiras, companhiasSeguros, utilizadores, currentUserRole, showAppModal, detalhesCredito, detalhesSeguro, detalhesLegalizacaoConsultoria, interacoes, addInteraction }) => {
+        const ContractManagement = ({ contratos, addContract, updateContract, deleteContract, clientes, fornecedores, financeiras, companhiasSeguros, utilizadores, showAppModal, detalhesCredito, detalhesSeguro, detalhesLegalizacaoConsultoria, interacoes, addInteraction }) => {
             const [searchTerm, setSearchTerm] = useState('');
             const [filterType, setFilterType] = useState('');
             const [filterStatus, setFilterStatus] = useState('');
@@ -976,7 +852,7 @@
                     showAppModal('Atenção', 'Por favor, adicione uma observação para a interação.');
                     return;
                 }
-                const currentUserId = window.auth.currentUser?.uid || 'anonymous'; // Obter o ID do utilizador logado
+                const currentUserId = firebase.auth().currentUser?.uid || 'admin-user'; // Obter o ID do utilizador logado (sempre admin neste caso)
                 await addInteraction({
                     id_cliente: null, // Interação específica do contrato, não do cliente
                     id_contrato: contractId,
@@ -1104,14 +980,12 @@
                                 <option value="Cancelado">Cancelado</option>
                             </select>
                         </div>
-                        {currentUserRole !== 'Colaborador' && (
-                            <button
-                                onClick={() => { setShowContractForm(true); setEditingContract(null); setNewContractData({ id_cliente: '', id_comercial: '', tipo_servico: 'Crédito', data_inicio: '', data_fim: '', estado: 'Pendente', observacoes: '', id_financeira: '', id_fornecedor: '', valor_financiado: '', prazo_meses: '', comissao_financeira: '', comissao_fornecedor: '', documentos_em_falta: false, lista_documentos_em_falta: '', credito_realizado: false, data_realizacao: '', id_companhia: '', tipo_seguro: '', valor_premio: '', freelancer: false, mediador: '', renovacao_automatica: false, data_renovacao: '', tipo_processo: '', estado_processo: '', honorarios: '', documentos_necessarios: '' }); setContractDetails(null); }}
-                                className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 w-full sm:w-auto"
-                            >
-                                Adicionar Novo Contrato
-                            </button>
-                        )}
+                        <button
+                            onClick={() => { setShowContractForm(true); setEditingContract(null); setNewContractData({ id_cliente: '', id_comercial: '', tipo_servico: 'Crédito', data_inicio: '', data_fim: '', estado: 'Pendente', observacoes: '', id_financeira: '', id_fornecedor: '', valor_financiado: '', prazo_meses: '', comissao_financeira: '', comissao_fornecedor: '', documentos_em_falta: false, lista_documentos_em_falta: '', credito_realizado: false, data_realizacao: '', id_companhia: '', tipo_seguro: '', valor_premio: '', freelancer: false, mediador: '', renovacao_automatica: false, data_renovacao: '', tipo_processo: '', estado_processo: '', honorarios: '', documentos_necessarios: '' }); setContractDetails(null); }}
+                            className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 w-full sm:w-auto"
+                        >
+                            Adicionar Novo Contrato
+                        </button>
                     </div>
 
                     {showContractForm && (
@@ -1454,12 +1328,8 @@
                                         <td className="py-3 px-4 text-sm text-gray-700">{contract.data_inicio}</td>
                                         <td className="py-3 px-4 text-sm text-gray-700 flex space-x-2">
                                             <button onClick={() => viewDetails(contract)} className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Ver Detalhes</button>
-                                            {(currentUserRole === 'Admin' || currentUserRole === 'Comercial') && (
-                                                <>
-                                                    <button onClick={() => startEdit(contract)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
-                                                    <button onClick={() => deleteContract(contract.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
-                                                </>
-                                            )}
+                                            <button onClick={() => startEdit(contract)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
+                                            <button onClick={() => deleteContract(contract.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -1471,7 +1341,7 @@
         };
 
         // Componente Gestão de Tarefas
-        const TaskManagement = ({ tarefas, addTask, updateTask, deleteTask, clientes, contratos, utilizadores, currentUserRole, showAppModal }) => {
+        const TaskManagement = ({ tarefas, addTask, updateTask, deleteTask, clientes, contratos, utilizadores, showAppModal }) => {
             const [searchTerm, setSearchTerm] = useState('');
             const [filterStatus, setFilterStatus] = useState('');
             const [filterPriority, setFilterPriority] = useState('');
@@ -1563,14 +1433,12 @@
                                 <option value="Alta">Alta</option>
                             </select>
                         </div>
-                        {currentUserRole !== 'Colaborador' && (
-                            <button
-                                onClick={() => { setShowTaskForm(true); setEditingTask(null); setNewTaskData({ titulo: '', descricao: '', data_vencimento: '', estado: 'Pendente', prioridade: 'Média', id_cliente: '', id_contrato: '', id_utilizador_responsavel: '' }); }}
-                                className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 w-full sm:w-auto"
-                            >
-                                Adicionar Nova Tarefa
-                            </button>
-                        )}
+                        <button
+                            onClick={() => { setShowTaskForm(true); setEditingTask(null); setNewTaskData({ titulo: '', descricao: '', data_vencimento: '', estado: 'Pendente', prioridade: 'Média', id_cliente: '', id_contrato: '', id_utilizador_responsavel: '' }); }}
+                            className="bg-accent-beige hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105 w-full sm:w-auto"
+                        >
+                            Adicionar Nova Tarefa
+                        </button>
                     </div>
 
                     {showTaskForm && (
@@ -1668,15 +1536,11 @@
                                         <td className="py-3 px-4 text-sm text-gray-700">{task.id_cliente ? getClientName(task.id_cliente) : 'N/A'}</td>
                                         <td className="py-3 px-4 text-sm text-gray-700">{task.id_contrato ? getContractId(task.id_contrato) : 'N/A'}</td>
                                         <td className="py-3 px-4 text-sm text-gray-700 flex space-x-2">
-                                            {(currentUserRole === 'Admin' || currentUserRole === 'Comercial') && (
-                                                <>
-                                                    {task.estado === 'Pendente' && (
-                                                        <button onClick={() => markAsComplete(task)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Concluir</button>
-                                                    )}
-                                                    <button onClick={() => startEdit(task)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
-                                                    <button onClick={() => deleteTask(task.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
-                                                </>
+                                            {task.estado === 'Pendente' && (
+                                                <button onClick={() => markAsComplete(task)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Concluir</button>
                                             )}
+                                            <button onClick={() => startEdit(task)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
+                                            <button onClick={() => deleteTask(task.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -1697,8 +1561,12 @@
                 nif: '', // Only for fornecedores
                 contacto: '',
                 email: '',
-                morada: '' // Only for fornecedores
+                morada: '', // Only for fornecedores
+                certidao_permanente: '', // New field for fornecedores
+                iban: '', // New field for fornecedores
+                uploads: [] // New field for fornecedores (simulated file names)
             });
+            const [newUploadFileName, setNewUploadFileName] = useState(''); // For simulated file uploads
 
             const handleInputChange = (e) => {
                 const { name, value } = e.target;
@@ -1708,20 +1576,42 @@
                 }));
             };
 
+            const handleAddUpload = () => {
+                if (newUploadFileName.trim()) {
+                    setNewEntityData(prev => ({
+                        ...prev,
+                        uploads: [...(prev.uploads || []), newUploadFileName.trim()]
+                    }));
+                    setNewUploadFileName('');
+                }
+            };
+
+            const handleRemoveUpload = (indexToRemove) => {
+                setNewEntityData(prev => ({
+                    ...prev,
+                    uploads: prev.uploads.filter((_, index) => index !== indexToRemove)
+                }));
+            };
+
             const resetNewEntityData = () => {
                 setNewEntityData({
                     nome: '',
                     nif: '',
                     contacto: '',
                     email: '',
-                    morada: ''
+                    morada: '',
+                    certidao_permanente: '',
+                    iban: '',
+                    uploads: []
                 });
                 setEditingEntity(null); // Limpa a entidade em edição
+                setNewUploadFileName('');
             };
 
             const startEdit = (entity, type) => {
                 setEditingEntity({ ...entity, type }); // Guarda a entidade e o seu tipo
-                setNewEntityData({ ...entity }); // Preenche o formulário com os dados da entidade
+                // Ensure uploads array is initialized if missing
+                setNewEntityData({ ...entity, uploads: entity.uploads || [] }); // Preenche o formulário com os dados da entidade
             };
 
             const handleSubmit = async () => {
@@ -1752,52 +1642,128 @@
                         <h3 className="text-2xl font-bold text-primary-dark mb-4">
                             {editingEntity ? `Editar ${editingEntity.type.charAt(0).toUpperCase() + editingEntity.type.slice(1)}` : `Adicionar ${activeSubTab === 'fornecedores' ? 'Fornecedor' : activeSubTab === 'financeiras' ? 'Financeira' : 'Companhia'}`}
                         </h3>
-                        <div className="flex flex-col gap-4">
-                            <input
-                                type="text"
-                                placeholder={`Nome do ${activeSubTab === 'fornecedores' ? 'Fornecedor' : activeSubTab === 'financeiras' ? 'Financeira' : 'Companhia'}`}
-                                name="nome"
-                                value={newEntityData.nome}
-                                onChange={handleInputChange}
-                                className="p-2 border border-light-grey-custom rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className="block col-span-1 md:col-span-2">
+                                <span className="text-gray-700">Nome:</span>
+                                <input
+                                    type="text"
+                                    name="nome"
+                                    value={newEntityData.nome}
+                                    onChange={handleInputChange}
+                                    placeholder={`Nome do ${activeSubTab === 'fornecedores' ? 'Fornecedor' : activeSubTab === 'financeiras' ? 'Financeira' : 'Companhia'}`}
+                                    className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                />
+                            </label>
                             {(activeSubTab === 'fornecedores' || (editingEntity && editingEntity.type === 'fornecedor')) && (
                                 <>
-                                    <input
-                                        type="text"
-                                        placeholder="NIF"
-                                        name="nif"
-                                        value={newEntityData.nif}
-                                        onChange={handleInputChange}
-                                        className="p-2 border border-light-grey-custom rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Morada"
-                                        name="morada"
-                                        value={newEntityData.morada}
-                                        onChange={handleInputChange}
-                                        className="p-2 border border-light-grey-custom rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                                    />
+                                    <label className="block">
+                                        <span className="text-gray-700">NIF:</span>
+                                        <input
+                                            type="text"
+                                            name="nif"
+                                            value={newEntityData.nif}
+                                            onChange={handleInputChange}
+                                            placeholder="NIF"
+                                            className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                        />
+                                    </label>
+                                    <label className="block">
+                                        <span className="text-gray-700">Morada:</span>
+                                        <input
+                                            type="text"
+                                            name="morada"
+                                            value={newEntityData.morada}
+                                            onChange={handleInputChange}
+                                            placeholder="Morada"
+                                            className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                        />
+                                    </label>
+                                    <label className="block">
+                                        <span className="text-gray-700">Certidão Permanente:</span>
+                                        <input
+                                            type="text"
+                                            name="certidao_permanente"
+                                            value={newEntityData.certidao_permanente}
+                                            onChange={handleInputChange}
+                                            placeholder="Certidão Permanente"
+                                            className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                        />
+                                    </label>
+                                    <label className="block">
+                                        <span className="text-gray-700">IBAN:</span>
+                                        <input
+                                            type="text"
+                                            name="iban"
+                                            value={newEntityData.iban}
+                                            onChange={handleInputChange}
+                                            placeholder="IBAN"
+                                            className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                        />
+                                    </label>
                                 </>
                             )}
-                            <input
-                                type="text"
-                                placeholder="Contacto"
-                                name="contacto"
-                                value={newEntityData.contacto}
-                                onChange={handleInputChange}
-                                className="p-2 border border-light-grey-custom rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                            />
-                            <input
-                                type="email"
-                                placeholder="Email"
-                                name="email"
-                                value={newEntityData.email}
-                                onChange={handleInputChange}
-                                className="p-2 border border-light-grey-custom rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-beige"
-                            />
-                            <div className="flex justify-end space-x-4">
+                            <label className="block">
+                                <span className="text-gray-700">Contacto:</span>
+                                <input
+                                    type="text"
+                                    name="contacto"
+                                    value={newEntityData.contacto}
+                                    onChange={handleInputChange}
+                                    placeholder="Contacto"
+                                    className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                />
+                            </label>
+                            <label className="block">
+                                <span className="text-gray-700">Email:</span>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={newEntityData.email}
+                                    onChange={handleInputChange}
+                                    placeholder="Email"
+                                    className="mt-1 block w-full rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                />
+                            </label>
+
+                            {(activeSubTab === 'fornecedores' || (editingEntity && editingEntity.type === 'fornecedor')) && (
+                                <div className="col-span-1 md:col-span-2">
+                                    <h4 className="text-lg font-semibold text-primary-dark mb-2">Upload de Dados (Simulado)</h4>
+                                    <div className="flex gap-2 mb-2">
+                                        <input
+                                            type="text"
+                                            value={newUploadFileName}
+                                            onChange={(e) => setNewUploadFileName(e.target.value)}
+                                            placeholder="Nome do Ficheiro (ex: Doc_XYZ.pdf)"
+                                            className="flex-grow p-2 border border-light-grey-custom rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-beige"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleAddUpload}
+                                            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105"
+                                        >
+                                            Adicionar Ficheiro
+                                        </button>
+                                    </div>
+                                    {newEntityData.uploads && newEntityData.uploads.length > 0 && (
+                                        <ul className="list-disc list-inside text-gray-700">
+                                            {newEntityData.uploads.map((fileName, index) => (
+                                                <li key={index} className="flex items-center justify-between py-1">
+                                                    <span>{fileName}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveUpload(index)}
+                                                        className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded-md"
+                                                    >
+                                                        Remover
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="col-span-1 md:col-span-2 flex justify-end space-x-4 mt-4">
                                 {editingEntity && (
                                     <button
                                         type="button"
@@ -1826,6 +1792,13 @@
                                     <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Nome</th>
                                     <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Contacto</th>
                                     <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Email</th>
+                                    {(activeSubTab === 'fornecedores') && (
+                                        <>
+                                            <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Certidão Permanente</th>
+                                            <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">IBAN</th>
+                                            <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Uploads</th>
+                                        </>
+                                    )}
                                     <th className="py-3 px-4 text-left text-sm font-semibold text-primary-dark">Ações</th>
                                 </tr>
                             </thead>
@@ -1836,6 +1809,15 @@
                                         <td className="py-3 px-4 text-sm text-gray-700">{f.nome}</td>
                                         <td className="py-3 px-4 text-sm text-gray-700">{f.contacto}</td>
                                         <td className="py-3 px-4 text-sm text-gray-700">{f.email}</td>
+                                        <td className="py-3 px-4 text-sm text-gray-700">{f.certidao_permanente || 'N/A'}</td>
+                                        <td className="py-3 px-4 text-sm text-gray-700">{f.iban || 'N/A'}</td>
+                                        <td className="py-3 px-4 text-sm text-gray-700">
+                                            {f.uploads && f.uploads.length > 0 ? (
+                                                <ul className="list-disc list-inside text-xs">
+                                                    {f.uploads.map((upload, idx) => <li key={idx}>{upload}</li>)}
+                                                </ul>
+                                            ) : 'Nenhum'}
+                                        </td>
                                         <td className="py-3 px-4 text-sm text-gray-700 flex space-x-2">
                                             <button onClick={() => startEdit(f, 'fornecedor')} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Editar</button>
                                             <button onClick={() => deleteEntity('fornecedor', f.id)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition duration-300 transform hover:scale-105">Eliminar</button>
@@ -2049,6 +2031,38 @@
             );
         };
 
+        // Componente de Configurações
+        const Settings = ({ clearAllData, showAppModal }) => {
+            return (
+                <section className="bg-white p-8 rounded-xl shadow-md mb-12">
+                    <h2 className="text-3xl font-bold text-primary-dark mb-6 text-center">Configurações da Aplicação</h2>
+                    <p className="text-gray-700 mb-8 text-center">
+                        Esta secção permite gerir configurações avançadas da aplicação, incluindo a limpeza de todos os dados.
+                    </p>
+
+                    <div className="bg-gray-50 p-6 rounded-lg shadow-inner mb-8">
+                        <h3 className="text-2xl font-bold text-red-700 mb-4">Gestão de Dados</h3>
+                        <p className="text-gray-700 mb-4">
+                            Esta ação irá **apagar permanentemente todos os dados** de clientes, contratos, tarefas, fornecedores, financeiras, companhias de seguros e interações da sua base de dados.
+                            Esta ação é **irreversível**. Utilize com extrema cautela.
+                        </p>
+                        <button
+                            onClick={() => showAppModal(
+                                'Confirmar Limpeza de Dados',
+                                'Tem a certeza absoluta que deseja apagar TODOS os dados da aplicação? Esta ação é irreversível e não pode ser desfeita.',
+                                clearAllData,
+                                true
+                            )}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105"
+                        >
+                            Limpar Todos os Dados
+                        </button>
+                    </div>
+                </section>
+            );
+        };
+
+
         // Componente Principal da Aplicação
         const App = () => {
             const [activeTab, setActiveTab] = useState('dashboard');
@@ -2060,7 +2074,8 @@
             const [auth, setAuth] = useState(null);
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [currentUser, setCurrentUser] = useState(null);
-            const [currentUserRole, setCurrentUserRole] = useState('Colaborador'); // Default role
+            const [currentUserRole, setCurrentUserRole] = useState('Admin'); // Always Admin now
+            const [isAuthReady, setIsAuthReady] = useState(false); // New state to track if auth is initialized
 
             // Data states
             const [clientes, setClientes] = useState([]);
@@ -2082,78 +2097,131 @@
 
             // Initialize Firebase and set up auth listener
             useEffect(() => {
+                console.log("App useEffect: Starting Firebase initialization and auth listener setup.");
+                let unsubscribeAuth = () => {}; // Initialize with a no-op function
+
                 try {
-                    const app = window.initializeApp(window.firebaseConfig);
-                    const firestore = window.getFirestore(app);
-                    const firebaseAuth = window.getAuth(app);
+                    // Ensure window.firebase is available
+                    if (typeof window.firebase === 'undefined') {
+                        console.error("Firebase global object is not available. Ensure Firebase UMD scripts are loaded.");
+                        showAppModal('Erro de Inicialização', 'O Firebase não foi carregado corretamente. Por favor, verifique os scripts.');
+                        setIsAuthReady(true);
+                        return;
+                    }
+
+                    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
+                    const firebaseConfig = typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : {
+                        apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU", // Fallback para a sua chave API se __firebase_config não estiver disponível
+                        authDomain: "theway-app-ca8e6.firebaseapp.com",
+                        projectId: "theway-app-ca8e6",
+                        storageBucket: "theway-app-ca8e6.appspot.com",
+                        messagingSenderId: "624037320749",
+                        appId: "1:624037320749:web:57dbc62528abb0177280a4",
+                        measurementId: "G-72EGLY3Q4X"
+                    };
+                    const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
+
+                    console.log("App useEffect: Calling firebase.initializeApp with config:", firebaseConfig);
+                    const app = window.firebase.initializeApp(firebaseConfig);
+                    const firestore = app.firestore(); // Get Firestore instance from the initialized app
+                    const firebaseAuth = app.auth(); // Get Auth instance from the initialized app
                     setDb(firestore);
                     setAuth(firebaseAuth);
+                    console.log("App useEffect: Firebase app, firestore, and auth instances set.");
 
-                    const unsubscribe = window.onAuthStateChanged(firebaseAuth, async (user) => {
+                    unsubscribeAuth = firebaseAuth.onAuthStateChanged(async (user) => {
+                        console.log("onAuthStateChanged callback: User state changed. User:", user ? user.uid : "null", "Email:", user ? user.email : "null");
+
                         if (user) {
+                            console.log("onAuthStateChanged: User is present. Setting isAuthenticated to true.");
                             setIsAuthenticated(true);
                             setCurrentUser(user);
-                            // Fetch user role
-                            const usersCollection = window.collection(firestore, `artifacts/${window.firebaseAppId}/public/data/utilizadores`);
-                            const userDoc = await window.getDocs(window.query(usersCollection, window.where('email', '==', user.email)));
-                            if (!userDoc.empty) {
-                                setCurrentUserRole(userDoc.docs[0].data().role);
+                            setCurrentUserRole('Admin'); // Always Admin
+                            console.log("onAuthStateChanged: User is authenticated. Role set to Admin.");
+
+                            // Ensure the 'admin-user' exists in Firestore with 'Admin' role
+                            const usersCollection = firestore.collection(`artifacts/${appId}/public/data/utilizadores`);
+                            const adminUserDocRef = usersCollection.doc('admin-user'); // Use a fixed ID for the single admin user
+                            const adminUserDoc = await adminUserDocRef.get();
+
+                            if (!adminUserDoc.exists) {
+                                console.log("Creating 'admin-user' in Firestore with Admin role.");
+                                await adminUserDocRef.set({
+                                    id_utilizador: 'admin-user',
+                                    nome: 'Administrador Principal',
+                                    email: 'bonecapraamigos@gmail.com', // Set specific email for consistency
+                                    role: 'Admin'
+                                });
                             } else {
-                                // If user not found in 'utilizadores', assign default 'Colaborador'
-                                setCurrentUserRole('Colaborador');
-                                // Optionally, add the new user to 'utilizadores' with a default role
-                                const newUserData = {
-                                    id_utilizador: user.uid,
-                                    nome: user.displayName || user.email,
-                                    email: user.email,
-                                    role: 'Colaborador'
-                                };
-                                await window.setDoc(window.doc(usersCollection, user.uid), newUserData);
+                                // Ensure the existing 'admin-user' has the correct email and role
+                                const existingData = adminUserDoc.data();
+                                if (existingData.email !== 'bonecapraamigos@gmail.com' || existingData.role !== 'Admin') {
+                                    console.log("Updating 'admin-user' in Firestore with correct email and Admin role.");
+                                    await adminUserDocRef.update({
+                                        email: 'bonecapraamigos@gmail.com',
+                                        role: 'Admin'
+                                    });
+                                }
                             }
 
                         } else {
-                            setIsAuthenticated(false);
+                            console.log("onAuthStateChanged: No user. Attempting initial sign-in with custom token.");
+                            setIsAuthenticated(false); // Temporarily set to false until new user is established
                             setCurrentUser(null);
-                            setCurrentUserRole('Colaborador'); // Reset role on logout
+                            setCurrentUserRole('Admin'); // Still set as Admin for UI purposes, even if auth hasn't completed
+
+                            // Attempt sign-in with custom token (Canvas environment provides this)
+                            if (!firebaseAuth.currentUser) {
+                                try {
+                                    if (initialAuthToken) {
+                                        console.log("onAuthStateChanged: Attempting sign-in with custom token.");
+                                        await firebaseAuth.signInWithCustomToken(initialAuthToken);
+                                        console.log("onAuthStateChanged: Custom token sign-in attempt finished.");
+                                    } else {
+                                        // Fallback if no custom token, though it should be provided by Canvas
+                                        console.warn("No initialAuthToken provided. This might cause issues in Canvas environment.");
+                                        // For a truly single-user app without external auth, you might generate a UID here
+                                        // For this context, we rely on Canvas providing a token.
+                                    }
+                                } catch (signInError) {
+                                    console.error("onAuthStateChanged: Erro na autenticação inicial (token):", signInError);
+                                    showAppModal('Erro de Autenticação Inicial', `Não foi possível autenticar inicialmente: ${signInError.message}`);
+                                }
+                            }
                         }
+                        console.log("onAuthStateChanged callback: Setting isAuthReady to true.");
+                        setIsAuthReady(true); // Auth state has been checked at least once
+                        console.log("onAuthStateChanged callback: isAuthReady:", true, "isAuthenticated:", isAuthenticated);
                     });
 
-                    return () => unsubscribe();
+                    console.log("App useEffect: Auth listener set up.");
+
+                    return () => {
+                        console.log("App useEffect cleanup: Unsubscribing from auth state changes.");
+                        unsubscribeAuth();
+                    };
                 } catch (error) {
-                    console.error("Erro ao inicializar Firebase:", error);
+                    console.error("App useEffect: Erro ao inicializar Firebase:", error);
                     showAppModal('Erro de Inicialização', `Não foi possível inicializar o Firebase: ${error.message}`);
+                    setIsAuthReady(true); // Mark as ready even on error to avoid infinite loading
                 }
             }, [showAppModal]);
-
-            // Sign in anonymously if no initial token
-            useEffect(() => {
-                if (auth && !currentUser && !isAuthenticated) {
-                    const signIn = async () => {
-                        try {
-                            if (window.initialAuthToken) {
-                                await window.signInWithCustomToken(auth, window.initialAuthToken);
-                            } else {
-                                await window.signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Erro na autenticação inicial:", error);
-                            showAppModal('Erro de Autenticação', `Não foi possível autenticar: ${error.message}`);
-                        }
-                    };
-                    signIn();
-                }
-            }, [auth, currentUser, isAuthenticated, showAppModal]);
 
 
             // Fetch data from Firestore
             useEffect(() => {
-                if (!db || !isAuthenticated) return;
+                if (!db || !isAuthenticated || !isAuthReady) {
+                    console.log("useEffect (data fetch): Skipping data fetch. DB, isAuthenticated or isAuthReady not ready.", {db, isAuthenticated, isAuthReady});
+                    return;
+                }
+                console.log("useEffect (data fetch): Starting data fetch.");
 
                 const fetchData = (collectionName, setState, idField) => {
-                    const colRef = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
-                    return window.onSnapshot(colRef, (snapshot) => {
+                    const colRef = db.collection(`artifacts/${window.__app_id}/public/data/${collectionName}`);
+                    return colRef.onSnapshot((snapshot) => {
                         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), [idField]: doc.data()[idField] || doc.id }));
                         setState(data);
+                        console.log(`Fetched ${data.length} documents from ${collectionName}.`);
                     }, (error) => {
                         console.error(`Erro ao buscar ${collectionName}:`, error);
                         showAppModal('Erro de Dados', `Não foi possível carregar ${collectionName}: ${error.message}`);
@@ -2175,6 +2243,7 @@
 
                 // Seed initial data if collections are empty
                 const seedData = async () => {
+                    console.log("Checking if data needs seeding...");
                     const collectionsToSeed = [
                         { name: 'clientes', data: initialMockData.clientes, idField: 'id_cliente' },
                         { name: 'contratos', data: initialMockData.contratos, idField: 'id_contrato' },
@@ -2190,20 +2259,22 @@
                     ];
 
                     for (const { name, data, idField } of collectionsToSeed) {
-                        const colRef = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${name}`);
-                        const existingDocs = await window.getDocs(colRef);
+                        const colRef = db.collection(`artifacts/${window.__app_id}/public/data/${name}`);
+                        const existingDocs = await colRef.get();
                         if (existingDocs.empty) {
                             console.log(`Seeding ${name} collection...`);
                             for (const item of data) {
-                                await window.setDoc(window.doc(colRef, item[idField]), item);
+                                await colRef.doc(item[idField]).set(item);
                             }
                         }
                     }
+                    console.log("Data seeding check complete.");
                 };
                 seedData();
 
 
                 return () => {
+                    console.log("useEffect cleanup (data fetch): Unsubscribing all data listeners.");
                     unsubClientes();
                     unsubContratos();
                     unsubDetalhesCredito();
@@ -2216,19 +2287,22 @@
                     unsubTarefas();
                     unsubInteracoes();
                 };
-            }, [db, isAuthenticated, showAppModal]);
+            }, [db, isAuthenticated, isAuthReady, showAppModal]); // Added isAuthReady to dependencies
 
             // CRUD Operations
             const addFirestoreDoc = async (collectionName, data, idField = null) => {
                 try {
-                    const colRef = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`);
+                    const colRef = db.collection(`artifacts/${window.__app_id}/public/data/${collectionName}`);
+                    let docRef;
                     if (idField && data[idField]) {
-                        await window.setDoc(window.doc(colRef, data[idField]), data);
+                        docRef = colRef.doc(data[idField]);
+                        await docRef.set(data);
                         showAppModal('Sucesso', 'Documento adicionado/atualizado com sucesso!');
                     } else {
-                        await window.addDoc(colRef, data);
+                        docRef = await colRef.add(data);
                         showAppModal('Sucesso', 'Documento adicionado com sucesso!');
                     }
+                    console.log(`Document added/updated in ${collectionName} with ID: ${idField ? data[idField] : docRef.id}`);
                 } catch (e) {
                     console.error("Erro ao adicionar documento: ", e);
                     showAppModal('Erro', `Erro ao adicionar documento: ${e.message}`);
@@ -2237,9 +2311,10 @@
 
             const updateFirestoreDoc = async (collectionName, id, data) => {
                 try {
-                    const docRef = window.doc(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`, id);
-                    await window.updateDoc(docRef, data);
+                    const docRef = db.collection(`artifacts/${window.__app_id}/public/data/${collectionName}`).doc(id);
+                    await docRef.update(data);
                     showAppModal('Sucesso', 'Documento atualizado com sucesso!');
+                    console.log(`Document updated in ${collectionName} with ID: ${id}`);
                 } catch (e) {
                     console.error("Erro ao atualizar documento: ", e);
                     showAppModal('Erro', `Erro ao atualizar documento: ${e.message}`);
@@ -2249,9 +2324,10 @@
             const deleteFirestoreDoc = async (collectionName, id) => {
                 showAppModal('Confirmar Eliminação', 'Tem certeza que deseja eliminar este item? Esta ação é irreversível.', async () => {
                     try {
-                        const docRef = window.doc(db, `artifacts/${window.firebaseAppId}/public/data/${collectionName}`, id);
-                        await window.deleteDoc(docRef);
+                        const docRef = db.collection(`artifacts/${window.__app_id}/public/data/${collectionName}`).doc(id);
+                        await docRef.delete();
                         showAppModal('Sucesso', 'Documento eliminado com sucesso!');
+                        console.log(`Document deleted from ${collectionName} with ID: ${id}`);
                     } catch (e) {
                         console.error("Erro ao eliminar documento: ", e);
                         showAppModal('Erro', `Erro ao eliminar documento: ${e.message}`);
@@ -2317,7 +2393,10 @@
                 };
                 const detailCollectionName = detailCollections[contractData.tipo_servico];
                 if (detailCollectionName) {
-                    const existingDetail = (await window.getDocs(window.query(window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${detailCollectionName}`), window.where('id_contrato', '==', contractData.id_contrato)))).docs[0];
+                    const q = db.collection(`artifacts/${window.__app_id}/public/data/${detailCollectionName}`).where('id_contrato', '==', contractData.id_contrato);
+                    const existingDetailSnapshot = await q.get();
+                    const existingDetail = existingDetailSnapshot.docs[0];
+
                     if (existingDetail) {
                         await updateFirestoreDoc(detailCollectionName, existingDetail.id, contractData);
                     } else {
@@ -2347,7 +2426,10 @@
                         };
                         const detailCollectionName = detailCollections[contractToDelete.tipo_servico];
                         if (detailCollectionName) {
-                            const existingDetail = (await window.getDocs(window.query(window.collection(db, `artifacts/${window.firebaseAppId}/public/data/${detailCollectionName}`), window.where('id_contrato', '==', contractToDelete.id_contrato)))).docs[0];
+                            const q = db.collection(`artifacts/${window.__app_id}/public/data/${detailCollectionName}`).where('id_contrato', '==', contractToDelete.id_contrato);
+                            const existingDetailSnapshot = await q.get();
+                            const existingDetail = existingDetailSnapshot.docs[0];
+
                             if (existingDetail) {
                                 await deleteFirestoreDoc(detailCollectionName, existingDetail.id);
                             }
@@ -2402,56 +2484,61 @@
                 }
             };
 
-            const handleLogin = async (email, password) => {
+            const clearAllFirestoreData = async () => {
+                if (!db) {
+                    showAppModal('Erro', 'Firestore não inicializado.');
+                    return;
+                }
+
+                const collectionsToClear = [
+                    'clientes', 'contratos', 'detalhes_credito', 'detalhes_seguro',
+                    'detalhes_legalizacao_consultoria', 'utilizadores', 'fornecedores',
+                    'financeiras', 'companhias_seguros', 'tarefas', 'interacoes'
+                ];
+
                 try {
-                    await window.signInWithEmailAndPassword(auth, email, password);
-                    showAppModal('Sucesso', 'Login realizado com sucesso!');
+                    for (const collectionName of collectionsToClear) {
+                        console.log(`A limpar coleção: ${collectionName}`);
+                        const collectionRef = db.collection(`artifacts/${window.__app_id}/public/data/${collectionName}`);
+                        const snapshot = await collectionRef.get(); // Get all documents
+                        const batch = db.batch(); // Create a batch for atomic deletes
+
+                        if (snapshot.empty) {
+                            console.log(`Coleção ${collectionName} já está vazia.`);
+                            continue;
+                        }
+
+                        snapshot.docs.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+
+                        await batch.commit(); // Commit the batch delete
+                        console.log(`Todos os documentos de ${collectionName} foram apagados.`);
+                    }
+                    showAppModal('Sucesso', 'Todos os dados de teste foram apagados com sucesso!');
                 } catch (error) {
-                    console.error("Erro no login:", error);
-                    showAppModal('Erro de Login', `Erro ao fazer login: ${error.message}`);
+                    console.error("Erro ao apagar dados de teste:", error);
+                    showAppModal('Erro', `Erro ao apagar dados de teste: ${error.message}`);
                 }
             };
 
-            const handleRegister = async (email, password) => {
-                try {
-                    const userCredential = await window.createUserWithEmailAndPassword(auth, email, password);
-                    const user = userCredential.user;
-                    // Add new user to 'utilizadores' collection with default 'Colaborador' role
-                    const usersCollection = window.collection(db, `artifacts/${window.firebaseAppId}/public/data/utilizadores`);
-                    await window.setDoc(window.doc(usersCollection, user.uid), {
-                        id_utilizador: user.uid,
-                        nome: user.email, // Use email as default name for new registrations
-                        email: user.email,
-                        role: 'Colaborador' // Default role for new registrations
-                    });
-                    showAppModal('Sucesso', 'Registo realizado com sucesso! Pode agora fazer login.');
-                } catch (error) {
-                    console.error("Erro no registo:", error);
-                    showAppModal('Erro de Registo', `Erro ao registar: ${error.message}`);
-                }
-            };
 
-            const handleLogout = async () => {
-                try {
-                    await window.signOut(auth);
-                    showAppModal('Sucesso', 'Sessão terminada com sucesso!');
-                } catch (error) {
-                    console.error("Erro ao fazer logout:", error);
-                    showAppModal('Erro de Logout', `Erro ao terminar sessão: ${error.message}`);
-                }
-            };
-
-            if (!isAuthenticated) {
-                return <AuthScreen onLogin={handleLogin} onRegister={handleRegister} showAppModal={showAppModal} />;
+            if (!isAuthReady) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+                        <div className="text-xl text-gray-700">A carregar aplicação...</div>
+                    </div>
+                );
             }
 
+            // No AuthScreen component, always render the main app
             return (
-                <div className="min-h-screen flex flex-col lg:flex-row bg-gray-100">
+                <div className="min-h-screen flex flex-col lg:flex-row bg-white">
                     {/* Sidebar de Navegação */}
                     <aside className="w-full lg:w-64 bg-primary-dark text-white p-6 flex flex-col space-y-4 rounded-b-xl lg:rounded-r-xl lg:rounded-bl-none shadow-lg">
                         <h1 className="text-3xl font-bold text-accent-beige mb-6 text-center">THE WAY</h1>
                         <p className="text-sm text-center text-light-grey-custom mb-4">
-                            Bem-vindo(a), {currentUser?.email || 'Utilizador'}! <br />
+                            Bem-vindo(a), Administrador! <br />
                             Função: <span className="font-semibold">{currentUserRole}</span>
                         </p>
                         <nav className="flex flex-col space-y-2">
@@ -2459,18 +2546,11 @@
                             <button onClick={() => setActiveTab('clientes')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'clientes' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Gestão de Clientes</button>
                             <button onClick={() => setActiveTab('contratos')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'contratos' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Gestão de Contratos</button>
                             <button onClick={() => setActiveTab('tarefas')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'tarefas' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Gestão de Tarefas</button>
-                            {currentUserRole === 'Admin' && (
-                                <button onClick={() => setActiveTab('fornecedores')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'fornecedores' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Fornecedores/Financeiras</button>
-                            )}
-                            {currentUserRole === 'Admin' && (
-                                <button onClick={() => setActiveTab('relatorios')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'relatorios' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Relatórios</button>
-                            )}
+                            <button onClick={() => setActiveTab('fornecedores')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'fornecedores' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Fornecedores/Financeiras</button>
+                            <button onClick={() => setActiveTab('relatorios')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'relatorios' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Relatórios</button>
+                            <button onClick={() => setActiveTab('configuracoes')} className={`py-3 px-4 rounded-lg text-left font-semibold transition duration-200 ${activeTab === 'configuracoes' ? 'bg-accent-beige text-primary-dark' : 'hover:bg-light-grey-custom hover:text-primary-dark'}`}>Configurações</button>
                         </nav>
-                        <div className="mt-auto pt-4 border-t border-light-grey-custom">
-                            <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105">
-                                Terminar Sessão
-                            </button>
-                        </div>
+                        {/* Removido o botão de debug e logout */}
                     </aside>
 
                     {/* Conteúdo Principal */}
@@ -2497,7 +2577,6 @@
                                 deleteClient={deleteClient}
                                 contratos={contratos}
                                 utilizadores={utilizadores}
-                                currentUserRole={currentUserRole}
                                 showAppModal={showAppModal}
                                 interacoes={interacoes}
                                 addInteraction={addInteraction}
@@ -2514,7 +2593,6 @@
                                 financeiras={financeiras}
                                 companhiasSeguros={companhiasSeguros}
                                 utilizadores={utilizadores}
-                                currentUserRole={currentUserRole}
                                 showAppModal={showAppModal}
                                 detalhesCredito={detalhesCredito}
                                 detalhesSeguro={detalhesSeguro}
@@ -2532,11 +2610,10 @@
                                 clientes={clientes}
                                 contratos={contratos}
                                 utilizadores={utilizadores}
-                                currentUserRole={currentUserRole}
                                 showAppModal={showAppModal}
                             />
                         )}
-                        {activeTab === 'fornecedores' && currentUserRole === 'Admin' && (
+                        {activeTab === 'fornecedores' && (
                             <SuppliersFinancialsManagement
                                 fornecedores={fornecedores}
                                 financeiras={financeiras}
@@ -2547,12 +2624,18 @@
                                 showAppModal={showAppModal}
                             />
                         )}
-                        {activeTab === 'relatorios' && currentUserRole === 'Admin' && (
+                        {activeTab === 'relatorios' && (
                             <SupplierReport
                                 fornecedores={fornecedores}
                                 contratos={contratos}
                                 detalhesCredito={detalhesCredito}
                                 clientes={clientes}
+                                showAppModal={showAppModal}
+                            />
+                        )}
+                        {activeTab === 'configuracoes' && (
+                            <Settings
+                                clearAllData={clearAllFirestoreData}
                                 showAppModal={showAppModal}
                             />
                         )}
