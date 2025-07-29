@@ -2099,6 +2099,7 @@
             const [currentUser, setCurrentUser] = useState(null);
             const [currentUserRole, setCurrentUserRole] = useState('Admin'); // Always Admin now
             const [isAuthReady, setIsAuthReady] = useState(false); // New state to track if auth is initialized
+            const [isLoadingApp, setIsLoadingApp] = useState(true); // New loading state for the entire app
 
             // Data states
             const [clientes, setClientes] = useState([]);
@@ -2118,135 +2119,152 @@
                 setShowModal(true);
             }, []);
 
-            // Initialize Firebase and set up auth listener
+            // Effect for Firebase Initialization and Auth
             useEffect(() => {
-                console.log("App useEffect: Starting Firebase initialization and auth listener setup.");
+                console.log("1. App useEffect: Starting Firebase initialization and auth listener setup.");
                 let unsubscribeAuth = () => {}; // Initialize with a no-op function
 
-                try {
-                    // Ensure window.firebase is available
-                    if (typeof window.firebase === 'undefined') {
-                        console.error("Firebase global object is not available. Ensure Firebase UMD scripts are loaded.");
-                        showAppModal('Erro de Inicialização', 'O Firebase não foi carregado corretamente. Por favor, verifique os scripts.');
-                        setIsAuthReady(true); // Mark as ready even on error to avoid infinite loading
-                        return;
-                    }
-
-                    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
-                    const firebaseConfig = typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : {
-                        apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU", // Fallback para a sua chave API se __firebase_config não estiver disponível
-                        authDomain: "theway-app-ca8e6.firebaseapp.com",
-                        projectId: "theway-app-ca8e6",
-                        storageBucket: "theway-app-ca8e6.appspot.com",
-                        messagingSenderId: "624037320749",
-                        appId: "1:624037320749:web:57dbc62528abb0177280a4",
-                        measurementId: "G-72EGLY3Q4X"
-                    };
-                    const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
-
-                    console.log("App useEffect: Calling firebase.initializeApp with config:", firebaseConfig);
-                    const app = window.firebase.initializeApp(firebaseConfig);
-                    const firestore = app.firestore(); // Get Firestore instance from the initialized app
-                    const firebaseAuth = app.auth(); // Get Auth instance from the initialized app
-                    setDb(firestore);
-                    setAuth(firebaseAuth);
-                    console.log("App useEffect: Firebase app, firestore, and auth instances set.");
-
-                    unsubscribeAuth = firebaseAuth.onAuthStateChanged(async (user) => {
-                        console.log("onAuthStateChanged callback: User state changed. User:", user ? user.uid : "null", "Email:", user ? user.email : "null");
-
-                        if (user) {
-                            console.log("onAuthStateChanged: User is present. Setting isAuthenticated to true.");
-                            setIsAuthenticated(true);
-                            setCurrentUser(user);
-                            setCurrentUserRole('Admin'); // Always Admin
-                            console.log("onAuthStateChanged: User is authenticated. Role set to Admin.");
-
-                            // Ensure the 'admin-user' exists in Firestore with 'Admin' role
-                            const usersCollection = firestore.collection(`artifacts/${appId}/public/data/utilizadores`);
-                            const adminUserDocRef = usersCollection.doc('admin-user'); // Use a fixed ID for the single admin user
-                            const adminUserDoc = await adminUserDocRef.get();
-
-                            if (!adminUserDoc.exists) {
-                                console.log("Creating 'admin-user' in Firestore with Admin role.");
-                                await adminUserDocRef.set({
-                                    id_utilizador: 'admin-user',
-                                    nome: 'Administrador Principal',
-                                    email: 'bonecapraamigos@gmail.com', // Set specific email for consistency
-                                    role: 'Admin'
-                                });
-                            } else {
-                                // Ensure the existing 'admin-user' has the correct email and role
-                                const existingData = adminUserDoc.data();
-                                if (existingData.email !== 'bonecapraamigos@gmail.com' || existingData.role !== 'Admin') {
-                                    console.log("Updating 'admin-user' in Firestore with correct email and Admin role.");
-                                    await adminUserDocRef.update({
-                                        email: 'bonecapraamigos@gmail.com',
-                                        role: 'Admin'
-                                    });
-                                }
-                            }
-
-                        } else {
-                            console.log("onAuthStateChanged: No user. Attempting initial sign-in with custom token.");
-                            setIsAuthenticated(false); // Temporarily set to false until new user is established
-                            setCurrentUser(null);
-                            setCurrentUserRole('Admin'); // Still set as Admin for UI purposes, even if auth hasn't completed
-
-                            // Attempt sign-in with custom token (Canvas environment provides this)
-                            if (!firebaseAuth.currentUser) {
-                                try {
-                                    if (initialAuthToken) {
-                                        console.log("onAuthStateChanged: Attempting sign-in with custom token.");
-                                        await firebaseAuth.signInWithCustomToken(initialAuthToken);
-                                        console.log("onAuthStateChanged: Custom token sign-in attempt finished.");
-                                    } else {
-                                        // Fallback if no custom token, though it should be provided by Canvas
-                                        console.warn("No initialAuthToken provided. This might cause issues in Canvas environment.");
-                                        // For a truly single-user app without external auth, you might generate a UID here
-                                        // For this context, we rely on Canvas providing a token.
-                                    }
-                                } catch (signInError) {
-                                    console.error("onAuthStateChanged: Erro na autenticação inicial (token):", signInError);
-                                    showAppModal('Erro de Autenticação Inicial', `Não foi possível autenticar inicialmente: ${signInError.message}`);
-                                }
-                            }
+                const initializeFirebase = async () => {
+                    try {
+                        if (typeof window.firebase === 'undefined') {
+                            console.error("ERROR: Firebase global object is not available. Ensure Firebase UMD scripts are loaded.");
+                            showAppModal('Erro de Inicialização', 'O Firebase não foi carregado corretamente. Por favor, verifique os scripts no cabeçalho HTML.');
+                            setIsAuthReady(true);
+                            setIsLoadingApp(false);
+                            return;
                         }
-                        console.log("onAuthStateChanged callback: Setting isAuthReady to true.");
-                        setIsAuthReady(true); // Auth state has been checked at least once
-                        console.log("onAuthStateChanged callback: isAuthReady:", true, "isAuthenticated:", isAuthenticated);
-                    });
 
-                    console.log("App useEffect: Auth listener set up.");
+                        const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
+                        const firebaseConfig = typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : {
+                            apiKey: "YOUR_FALLBACK_API_KEY", // Fallback para a sua chave API se __firebase_config não estiver disponível
+                            authDomain: "your-fallback-auth-domain.firebaseapp.com",
+                            projectId: "your-fallback-project-id",
+                            storageBucket: "your-fallback-storage-bucket.appspot.com",
+                            messagingSenderId: "your-fallback-messaging-sender-id",
+                            appId: "your-fallback-app-id",
+                            measurementId: "your-fallback-measurement-id"
+                        };
+                        const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
 
-                    return () => {
-                        console.log("App useEffect cleanup: Unsubscribing from auth state changes.");
-                        unsubscribeAuth();
-                    };
-                } catch (error) {
-                    console.error("App useEffect: Erro ao inicializar Firebase:", error);
-                    showAppModal('Erro de Inicialização', `Não foi possível inicializar o Firebase: ${error.message}`);
-                    setIsAuthReady(true); // Mark as ready even on error to avoid infinite loading
-                }
-            }, [showAppModal]);
+                        console.log("2. App useEffect: Firebase config used:", firebaseConfig);
+                        console.log("3. App useEffect: Initial Auth Token:", initialAuthToken ? "present" : "absent");
 
+                        // Initialize app if not already initialized
+                        let appInstance;
+                        if (!window.firebase.apps.length) {
+                            appInstance = window.firebase.initializeApp(firebaseConfig);
+                            console.log("4. App useEffect: Firebase app initialized.");
+                        } else {
+                            appInstance = window.firebase.app(); // Get default app if already initialized
+                            console.log("4. App useEffect: Firebase app already initialized.");
+                        }
 
-            // Fetch data from Firestore
+                        const firestore = appInstance.firestore();
+                        const firebaseAuth = appInstance.auth();
+                        setDb(firestore);
+                        setAuth(firebaseAuth);
+                        console.log("5. App useEffect: Firebase firestore and auth instances set in state.");
+
+                        // Handle initial authentication
+                        if (!firebaseAuth.currentUser) {
+                            try {
+                                if (initialAuthToken) {
+                                    console.log("6. App useEffect: Attempting signInWithCustomToken...");
+                                    await firebaseAuth.signInWithCustomToken(initialAuthToken);
+                                    console.log("7. App useEffect: signInWithCustomToken successful.");
+                                } else {
+                                    console.warn("6. App useEffect: No initialAuthToken provided. Attempting anonymous sign-in.");
+                                    await firebaseAuth.signInAnonymously();
+                                    console.log("7. App useEffect: Anonymous sign-in successful.");
+                                }
+                            } catch (signInError) {
+                                console.error("ERROR: 8. App useEffect: Erro na autenticação inicial:", signInError);
+                                showAppModal('Erro de Autenticação Inicial', `Não foi possível autenticar: ${signInError.message}`);
+                            }
+                        } else {
+                            console.log("6. App useEffect: User already authenticated:", firebaseAuth.currentUser.uid);
+                        }
+
+                        // Set up auth state listener
+                        unsubscribeAuth = firebaseAuth.onAuthStateChanged(async (user) => {
+                            console.log("9. onAuthStateChanged callback: User state changed. User:", user ? user.uid : "null", "Email:", user ? user.email : "null");
+                            if (user) {
+                                setIsAuthenticated(true);
+                                setCurrentUser(user);
+                                setCurrentUserRole('Admin'); // Always Admin
+
+                                // Ensure 'admin-user' exists in Firestore
+                                const usersCollection = firestore.collection(`artifacts/${appId}/public/data/utilizadores`);
+                                const adminUserDocRef = usersCollection.doc('admin-user');
+                                try {
+                                    const adminUserDoc = await adminUserDocRef.get();
+                                    if (!adminUserDoc.exists) {
+                                        console.log("10. Creating 'admin-user' in Firestore.");
+                                        await adminUserDocRef.set({
+                                            id_utilizador: 'admin-user',
+                                            nome: 'Administrador Principal',
+                                            email: 'bonecapraamigos@gmail.com',
+                                            role: 'Admin'
+                                        });
+                                    } else {
+                                        const existingData = adminUserDoc.data();
+                                        if (existingData.email !== 'bonecapraamigos@gmail.com' || existingData.role !== 'Admin') {
+                                            console.log("10. Updating 'admin-user' in Firestore.");
+                                            await adminUserDocRef.update({
+                                                email: 'bonecapraamigos@gmail.com',
+                                                role: 'Admin'
+                                            });
+                                        }
+                                    }
+                                } catch (firestoreError) {
+                                    console.error("ERROR: 11. Firestore operation failed for admin user:", firestoreError);
+                                    showAppModal('Erro de Firestore', `Não foi possível gerir o utilizador admin: ${firestoreError.message}`);
+                                }
+                            } else {
+                                setIsAuthenticated(false);
+                                setCurrentUser(null);
+                                setCurrentUserRole('Admin'); // Default role even if not authenticated
+                            }
+                            console.log("12. onAuthStateChanged callback: Setting isAuthReady to true and isLoadingApp to false.");
+                            setIsAuthReady(true); // Auth state has been checked at least once
+                            setIsLoadingApp(false); // App is ready to render main content
+                        });
+
+                    } catch (error) {
+                        console.error("ERROR: App useEffect: Erro geral ao inicializar Firebase:", error);
+                        showAppModal('Erro de Inicialização Crítico', `Não foi possível inicializar a aplicação: ${error.message}`);
+                        setIsAuthReady(true); // Mark as ready even on error to avoid infinite loading
+                        setIsLoadingApp(false); // Stop loading
+                    }
+                };
+
+                initializeFirebase();
+
+                return () => {
+                    console.log("App useEffect cleanup: Unsubscribing from auth state changes.");
+                    unsubscribeAuth();
+                };
+            }, [showAppModal]); // Dependency array includes showAppModal
+
+            // Effect for Data Fetching
             useEffect(() => {
+                console.log("13. useEffect (data fetch): Checking dependencies. db:", !!db, "isAuthenticated:", isAuthenticated, "isAuthReady:", isAuthReady);
                 if (!db || !isAuthenticated || !isAuthReady) {
-                    console.log("useEffect (data fetch): Skipping data fetch. DB, isAuthenticated or isAuthReady not ready.", {db, isAuthenticated, isAuthReady});
+                    console.log("14. useEffect (data fetch): Skipping data fetch. Dependencies not ready.");
                     return;
                 }
-                console.log("useEffect (data fetch): Starting data fetch.");
+                console.log("15. useEffect (data fetch): Starting data fetch.");
 
                 const fetchData = (collectionName, setState, idField) => {
-                    const colRef = db.collection(`artifacts/${window.__app_id}/public/data/${collectionName}`);
+                    const colPath = `artifacts/${window.__app_id}/public/data/${collectionName}`;
+                    console.log(`16. Fetching data from: ${colPath}`);
+                    const colRef = db.collection(colPath);
                     return colRef.onSnapshot((snapshot) => {
                         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), [idField]: doc.data()[idField] || doc.id }));
                         setState(data);
-                        console.log(`Fetched ${data.length} documents from ${collectionName}.`);
+                        console.log(`17. Fetched ${data.length} documents from ${collectionName}.`);
                     }, (error) => {
-                        console.error(`Erro ao buscar ${collectionName}:`, error);
+                        console.error(`ERROR: 18. Erro ao buscar ${collectionName}:`, error);
                         showAppModal('Erro de Dados', `Não foi possível carregar ${collectionName}: ${error.message}`);
                     });
                 };
@@ -2263,15 +2281,14 @@
                 const unsubTarefas = fetchData('tarefas', setTarefas, 'id_tarefa');
                 const unsubInteracoes = fetchData('interacoes', setInteracoes, 'id_interacao');
 
-
                 // Seed initial data if collections are empty
                 const seedData = async () => {
-                    console.log("Checking if data needs seeding...");
+                    console.log("19. Checking if data needs seeding...");
                     const collectionsToSeed = [
                         { name: 'clientes', data: initialMockData.clientes, idField: 'id_cliente' },
                         { name: 'contratos', data: initialMockData.contratos, idField: 'id_contrato' },
                         { name: 'detalhes_credito', data: initialMockData.detalhes_credito, idField: 'id_contrato' },
-                        { name: 'detalhes_seguro', data: initialMockData.seguro, idField: 'id_contrato' }, // Fixed typo: initialMockData.seguro should be initialMockData.detalhes_seguro
+                        { name: 'detalhes_seguro', data: initialMockData.detalhes_seguro, idField: 'id_contrato' },
                         { name: 'detalhes_legalizacao_consultoria', data: initialMockData.detalhes_legalizacao_consultoria, idField: 'id_contrato' },
                         { name: 'utilizadores', data: initialMockData.utilizadores, idField: 'id_utilizador' },
                         { name: 'fornecedores', data: initialMockData.fornecedores, idField: 'id_fornecedor' },
@@ -2283,21 +2300,29 @@
 
                     for (const { name, data, idField } of collectionsToSeed) {
                         const colRef = db.collection(`artifacts/${window.__app_id}/public/data/${name}`);
-                        const existingDocs = await colRef.get();
-                        if (existingDocs.empty) {
-                            console.log(`Seeding ${name} collection...`);
-                            for (const item of data) {
-                                await colRef.doc(item[idField]).set(item);
+                        try {
+                            const existingDocs = await colRef.get();
+                            if (existingDocs.empty) {
+                                console.log(`20. Seeding ${name} collection...`);
+                                for (const item of data) {
+                                    await colRef.doc(item[idField]).set(item);
+                                }
+                                console.log(`21. ${name} collection seeded.`);
+                            } else {
+                                console.log(`20. ${name} collection already has data. Skipping seeding.`);
                             }
+                        } catch (seedError) {
+                            console.error(`ERROR: 22. Erro ao semear dados para ${name}:`, seedError);
+                            showAppModal('Erro ao Semear Dados', `Não foi possível semear dados para ${name}: ${seedError.message}`);
                         }
                     }
-                    console.log("Data seeding check complete.");
+                    console.log("23. Data seeding check complete.");
                 };
                 seedData();
 
 
                 return () => {
-                    console.log("useEffect cleanup (data fetch): Unsubscribing all data listeners.");
+                    console.log("24. useEffect cleanup (data fetch): Unsubscribing all data listeners.");
                     unsubClientes();
                     unsubContratos();
                     unsubDetalhesCredito();
@@ -2546,10 +2571,10 @@
             };
 
 
-            if (!isAuthReady) {
+            if (isLoadingApp) {
                 return (
                     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                        <div className="text-xl text-gray-700">A carregar aplicação...</div>
+                        <div className="text-xl text-gray-700">A carregar aplicação... Por favor, aguarde e verifique a consola para mensagens de depuração.</div>
                     </div>
                 );
             }
@@ -2682,4 +2707,3 @@
     </script>
 </body>
 </html>
-
