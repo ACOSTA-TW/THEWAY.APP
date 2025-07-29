@@ -2135,14 +2135,15 @@
                         }
 
                         const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
+                        // Usando a chave API fornecida como fallback
                         const firebaseConfig = typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : {
-                            apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU", // Fallback para a sua chave API se __firebase_config não estiver disponível
-                            authDomain: "your-fallback-auth-domain.firebaseapp.com",
-                            projectId: "your-fallback-project-id",
-                            storageBucket: "your-fallback-storage-bucket.appspot.com",
-                            messagingSenderId: "your-fallback-messaging-sender-id",
-                            appId: "your-fallback-app-id",
-                            measurementId: "your-fallback-measurement-id"
+                            apiKey: "AIzaSyBOKA8gTE-sT_pZmGk0vnxIveIcta4r1cU",
+                            authDomain: "theway-app-ca8e6.firebaseapp.com",
+                            projectId: "theway-app-ca8e6",
+                            storageBucket: "theway-app-ca8e6.firebasestorage.app",
+                            messagingSenderId: "624037320749",
+                            appId: "1:624037320749:web:57dbc62528abb0177280a4",
+                            measurementId: "G-72EGLY3Q4X"
                         };
                         const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
 
@@ -2707,3 +2708,4 @@
     </script>
 </body>
 </html>
+
