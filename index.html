@@ -8,17 +8,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carregamento do Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Carregamento do Babel para transpilagem de JSX no navegador -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Carregamento das bibliotecas Firebase (UMD builds, expõem global 'firebase') -->
+    <!-- IMPORTANTE: Estes scripts devem ser carregados ANTES do script React principal -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <!-- Carregamento de React e ReactDOM (UMD builds, expõem globais React e ReactDOM) -->
     <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-
-    <!-- Carregamento das bibliotecas Firebase (UMD compat builds, expõem global 'firebase') -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Carregamento do Babel para transpilagem de JSX no navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
         /* Chosen Palette: The Way - Calm Harmony */
@@ -2033,6 +2034,23 @@
 
         // Componente de Configurações
         const Settings = ({ clearAllData, showAppModal }) => {
+            const [pinInput, setPinInput] = useState('');
+            const CORRECT_PIN = '0148';
+
+            const handleClearDataAttempt = () => {
+                if (pinInput === CORRECT_PIN) {
+                    showAppModal(
+                        'Confirmar Limpeza de Dados',
+                        'Tem a certeza absoluta que deseja apagar TODOS os dados da aplicação? Esta ação é irreversível e não pode ser desfeita.',
+                        clearAllData,
+                        true
+                    );
+                } else {
+                    showAppModal('PIN Incorreto', 'O PIN introduzido está incorreto. Por favor, tente novamente.');
+                }
+                setPinInput(''); // Limpa o campo do PIN após a tentativa
+            };
+
             return (
                 <section className="bg-white p-8 rounded-xl shadow-md mb-12">
                     <h2 className="text-3xl font-bold text-primary-dark mb-6 text-center">Configurações da Aplicação</h2>
@@ -2046,13 +2064,18 @@
                             Esta ação irá **apagar permanentemente todos os dados** de clientes, contratos, tarefas, fornecedores, financeiras, companhias de seguros e interações da sua base de dados.
                             Esta ação é **irreversível**. Utilize com extrema cautela.
                         </p>
+                        <label className="block mb-4">
+                            <span className="text-gray-700 font-semibold">Introduza o PIN para confirmar:</span>
+                            <input
+                                type="password"
+                                value={pinInput}
+                                onChange={(e) => setPinInput(e.target.value)}
+                                className="mt-1 block w-full max-w-xs rounded-md border-light-grey-custom shadow-sm focus:border-accent-beige focus:ring focus:ring-accent-beige focus:ring-opacity-50 p-2"
+                                placeholder="PIN (e.g., 0148)"
+                            />
+                        </label>
                         <button
-                            onClick={() => showAppModal(
-                                'Confirmar Limpeza de Dados',
-                                'Tem a certeza absoluta que deseja apagar TODOS os dados da aplicação? Esta ação é irreversível e não pode ser desfeita.',
-                                clearAllData,
-                                true
-                            )}
+                            onClick={handleClearDataAttempt}
                             className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 transform hover:scale-105"
                         >
                             Limpar Todos os Dados
@@ -2105,7 +2128,7 @@
                     if (typeof window.firebase === 'undefined') {
                         console.error("Firebase global object is not available. Ensure Firebase UMD scripts are loaded.");
                         showAppModal('Erro de Inicialização', 'O Firebase não foi carregado corretamente. Por favor, verifique os scripts.');
-                        setIsAuthReady(true);
+                        setIsAuthReady(true); // Mark as ready even on error to avoid infinite loading
                         return;
                     }
 
@@ -2248,7 +2271,7 @@
                         { name: 'clientes', data: initialMockData.clientes, idField: 'id_cliente' },
                         { name: 'contratos', data: initialMockData.contratos, idField: 'id_contrato' },
                         { name: 'detalhes_credito', data: initialMockData.detalhes_credito, idField: 'id_contrato' },
-                        { name: 'detalhes_seguro', data: initialMockData.detalhes_seguro, idField: 'id_contrato' },
+                        { name: 'detalhes_seguro', data: initialMockData.seguro, idField: 'id_contrato' }, // Fixed typo: initialMockData.seguro should be initialMockData.detalhes_seguro
                         { name: 'detalhes_legalizacao_consultoria', data: initialMockData.detalhes_legalizacao_consultoria, idField: 'id_contrato' },
                         { name: 'utilizadores', data: initialMockData.utilizadores, idField: 'id_utilizador' },
                         { name: 'fornecedores', data: initialMockData.fornecedores, idField: 'id_fornecedor' },
@@ -2659,3 +2682,4 @@
     </script>
 </body>
 </html>
+
